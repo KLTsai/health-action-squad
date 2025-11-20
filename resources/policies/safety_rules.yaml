@@ -1,0 +1,195 @@
+# Safety Rules for Health Action Squad
+# These rules MUST be enforced by SafetyGuardAgent
+
+version: "1.0"
+last_updated: "2025-11-20"
+
+# Mandatory requirements for all plans
+mandatory_requirements:
+  medical_disclaimer:
+    required: true
+    description: "Plan must include clear disclaimer that it's not medical advice"
+    keywords:
+      - "not a substitute for professional medical advice"
+      - "consult with a qualified healthcare provider"
+      - "informational purposes only"
+
+  source_citations:
+    required: true
+    description: "Medical claims must be supported by credible sources"
+    acceptable_sources:
+      - "American Heart Association"
+      - "Centers for Disease Control"
+      - "World Health Organization"
+      - "National Institutes of Health"
+      - "Peer-reviewed medical journals"
+      - "Government health agencies"
+
+  healthcare_consultation:
+    required: true
+    description: "Must recommend consulting healthcare provider"
+    keywords:
+      - "consult your healthcare provider"
+      - "talk to your doctor"
+      - "seek medical advice"
+
+# Prohibited content
+prohibitions:
+  medication_prescription:
+    prohibited: true
+    description: "Cannot prescribe medications or dosages"
+    examples:
+      - "Take 10mg of medication X"
+      - "You should be on statin therapy"
+      - "Start aspirin regimen"
+
+  medical_diagnosis:
+    prohibited: true
+    description: "Cannot diagnose medical conditions"
+    examples:
+      - "You have diabetes"
+      - "This indicates heart disease"
+      - "You are experiencing kidney failure"
+
+  cure_claims:
+    prohibited: true
+    description: "Cannot claim to cure diseases"
+    keywords:
+      - "cure"
+      - "eliminate disease"
+      - "reverse condition"
+
+  extreme_recommendations:
+    prohibited: true
+    description: "Cannot recommend extreme or dangerous interventions"
+    examples:
+      - "Extreme calorie restriction (<800 calories/day)"
+      - "Excessive exercise (>3 hours daily for beginners)"
+      - "Elimination of entire food groups without medical supervision"
+      - "Fasting for extended periods"
+
+# Plan constraints
+constraints:
+  max_word_count: 1500
+  min_word_count: 300
+  required_sections:
+    - "Overview"
+    - "Nutrition"
+    - "Physical Activity"
+    - "Medical Follow-up"
+    - "Disclaimer"
+
+# Risk-specific requirements
+risk_specific_validation:
+  high_cholesterol:
+    must_address:
+      - "Dietary changes (reduce saturated fats, increase fiber)"
+      - "Regular cholesterol monitoring"
+      - "Medical consultation recommendation"
+    must_avoid:
+      - "Extreme low-fat diets without supervision"
+      - "Specific supplement dosages"
+
+  high_blood_pressure:
+    must_address:
+      - "Sodium reduction (< 2,300mg/day)"
+      - "DASH diet or similar approach"
+      - "Stress management"
+      - "Regular blood pressure monitoring"
+      - "Medical consultation recommendation"
+    must_avoid:
+      - "Recommendations to stop medications"
+      - "Extreme salt elimination"
+
+  elevated_glucose:
+    must_address:
+      - "Blood sugar monitoring"
+      - "Carbohydrate management"
+      - "Medical supervision emphasis"
+      - "Hypoglycemia warning"
+    must_avoid:
+      - "Severe carbohydrate restriction without medical oversight"
+      - "Recommendations to adjust diabetes medications"
+
+  diabetes:
+    must_address:
+      - "Close medical supervision required"
+      - "Blood sugar monitoring schedule"
+      - "Medication compliance reminder"
+      - "Hypoglycemia recognition and management"
+    must_avoid:
+      - "Any medication dosage recommendations"
+      - "Drastic dietary changes without medical clearance"
+
+  overweight:
+    must_address:
+      - "Gradual weight loss (1-2 lbs/week maximum)"
+      - "Sustainable dietary changes"
+      - "Physical activity appropriate to fitness level"
+    must_avoid:
+      - "Rapid weight loss goals"
+      - "Extreme calorie restriction"
+      - "Fad diets"
+
+  obese:
+    must_address:
+      - "Medical supervision recommendation"
+      - "Gradual approach to weight loss"
+      - "Low-impact exercise options"
+      - "Possible comorbidities consideration"
+    must_avoid:
+      - "Extreme exercise recommendations"
+      - "Crash diets"
+
+  sedentary:
+    must_address:
+      - "Gradual increase in activity"
+      - "Low-intensity starting point"
+      - "Safety precautions for beginners"
+      - "Medical clearance for those with risk factors"
+    must_avoid:
+      - "Immediate high-intensity recommendations"
+      - "Excessive volume for beginners"
+
+  smoking:
+    must_address:
+      - "Cessation programs and resources"
+      - "Medical support for quitting"
+      - "Benefits of quitting"
+    must_avoid:
+      - "Specific nicotine replacement dosages"
+      - "Cold turkey as only option"
+
+# Validation severity levels
+severity_levels:
+  critical:
+    - "medication_prescription"
+    - "medical_diagnosis"
+    - "dangerous_recommendations"
+    - "missing_disclaimer"
+
+  high:
+    - "missing_sources"
+    - "cure_claims"
+    - "missing_risk_mitigation"
+
+  medium:
+    - "plan_too_long"
+    - "missing_minor_section"
+
+  low:
+    - "formatting_issues"
+    - "minor_typos"
+
+# Circuit breaker settings
+circuit_breaker:
+  max_retries: 3
+  description: "Maximum number of Planner-Guard retry loops"
+  fallback_action: "Generate safe generic recommendations"
+
+# Audit trail requirements
+audit:
+  log_all_validations: true
+  include_decision_reasoning: true
+  track_violation_frequencies: true
+  privacy_protection: "Do not log raw health data"
