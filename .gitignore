@@ -91,6 +91,9 @@ output/
 *.json
 *.xlsx
 
+# Exception: Keep sample data in resources/data/
+!resources/data/*.json
+
 # Temporary files
 tmp/
 temp/

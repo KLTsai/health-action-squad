@@ -1,0 +1,32 @@
+{
+  "patient_info": {
+    "age": 45,
+    "gender": "male",
+    "report_date": "2025-11-15"
+  },
+  "vital_signs": {
+    "blood_pressure_systolic": 135,
+    "blood_pressure_diastolic": 85,
+    "heart_rate": 78,
+    "weight_kg": 88,
+    "height_cm": 175,
+    "bmi": 28.7
+  },
+  "lipid_panel": {
+    "cholesterol_total": 225,
+    "cholesterol_ldl": 145,
+    "cholesterol_hdl": 42,
+    "triglycerides": 190
+  },
+  "glucose_metabolism": {
+    "glucose_fasting": 108,
+    "hba1c": 5.9
+  },
+  "lifestyle_factors": {
+    "physical_activity": "sedentary",
+    "exercise_minutes_per_week": 30,
+    "smoking_status": "non-smoker",
+    "alcohol_consumption": "moderate"
+  },
+  "notes": "Patient reports limited physical activity due to desk job. Interested in lifestyle modifications to improve cardiovascular health."
+}

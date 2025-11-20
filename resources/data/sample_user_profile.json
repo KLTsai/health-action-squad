@@ -1,0 +1,43 @@
+{
+  "demographics": {
+    "age": 45,
+    "gender": "male",
+    "location": "urban"
+  },
+  "lifestyle_preferences": {
+    "dietary_preferences": "no_restrictions",
+    "food_allergies": [],
+    "cuisine_preferences": ["mediterranean", "asian"],
+    "cooking_skill_level": "intermediate",
+    "meal_prep_time_available": "moderate"
+  },
+  "fitness_profile": {
+    "current_activity_level": "sedentary",
+    "exercise_history": "former_athlete",
+    "fitness_goals": ["improve_cardiovascular_health", "lose_weight"],
+    "preferred_activities": ["swimming", "cycling", "hiking"],
+    "time_available_per_week": "3-4 hours",
+    "access_to_gym": true,
+    "injuries_limitations": "mild knee pain"
+  },
+  "work_schedule": {
+    "occupation": "office_worker",
+    "work_hours": "9am-6pm",
+    "commute_time": "30 minutes",
+    "stress_level": "moderate"
+  },
+  "health_goals": {
+    "primary_goals": [
+      "Lower cholesterol",
+      "Reduce blood pressure",
+      "Improve fitness level"
+    ],
+    "timeline": "6 months",
+    "motivation_level": "high"
+  },
+  "support_system": {
+    "family_support": "yes",
+    "willing_to_join_programs": true,
+    "preferred_communication": "mobile_app"
+  }
+}
