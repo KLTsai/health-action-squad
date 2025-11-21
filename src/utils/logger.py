@@ -11,7 +11,7 @@ from typing import Any, Dict, Optional
 import structlog
 from datetime import datetime
 
-from ..core.config import Config
+from ..common.config import Config
 
 
 def setup_logging(log_level: str = "INFO", log_format: str = "json") -> None:
@@ -35,9 +35,11 @@ def setup_logging(log_level: str = "INFO", log_format: str = "json") -> None:
     if log_format == "json":
         processors.append(structlog.processors.JSONRenderer())
     else:
-        processors.extend([
-            structlog.dev.ConsoleRenderer(colors=True),
-        ])
+        processors.extend(
+            [
+                structlog.dev.ConsoleRenderer(colors=True),
+            ]
+        )
 
     structlog.configure(
         processors=processors,
@@ -168,12 +170,7 @@ class AgentLogger:
         """
         self.logger.critical(message, **self._build_context(**kwargs))
 
-    def trace_state_transition(
-        self,
-        from_state: str,
-        to_state: str,
-        **kwargs
-    ) -> None:
+    def trace_state_transition(self, from_state: str, to_state: str, **kwargs) -> None:
         """Log state transition for workflow tracing.
 
         Args:
@@ -182,18 +179,10 @@ class AgentLogger:
             **kwargs: Additional context
         """
         self.info(
-            "State transition",
-            from_state=from_state,
-            to_state=to_state,
-            **kwargs
+            "State transition", from_state=from_state, to_state=to_state, **kwargs
         )
 
-    def trace_agent_call(
-        self,
-        target_agent: str,
-        action: str,
-        **kwargs
-    ) -> None:
+    def trace_agent_call(self, target_agent: str, action: str, **kwargs) -> None:
         """Log agent-to-agent (A2A) call.
 
         Args:
@@ -201,16 +190,8 @@ class AgentLogger:
             action: Action being performed
             **kwargs: Additional context
         """
-        self.info(
-            "Agent call",
-            target_agent=target_agent,
-            action=action,
-            **kwargs
-        )
+        self.info("Agent call", target_agent=target_agent, action=action, **kwargs)
 
 
 # Initialize logging on module import
-setup_logging(
-    log_level=Config.LOG_LEVEL,
-    log_format=Config.LOG_FORMAT
-)
+setup_logging(log_level=Config.LOG_LEVEL, log_format=Config.LOG_FORMAT)

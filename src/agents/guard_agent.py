@@ -6,10 +6,11 @@ MUST inherit from google.adk.agents.Agent.
 
 from typing import Dict, List
 import yaml
+
 # from google.adk.agents import Agent  # Uncomment when ADK is installed
 
-from ..core.state import SessionState, WorkflowStatus
-from ..core.config import Config
+from ..domain.state import SessionState, WorkflowStatus
+from ..common.config import Config
 from ..utils.logger import AgentLogger
 
 
@@ -84,7 +85,7 @@ class SafetyGuardAgent:  # TODO: Inherit from Agent when ADK is installed
         self.logger.info(
             "Starting plan validation",
             iteration=state.retry_count + 1,
-            plan_length=len(state.current_plan)
+            plan_length=len(state.current_plan),
         )
 
         # Validate input
@@ -103,10 +104,7 @@ class SafetyGuardAgent:  # TODO: Inherit from Agent when ADK is installed
         if validation_result["decision"] == "APPROVE":
             updated_state = state.update(status=WorkflowStatus.APPROVED)
 
-            self.logger.info(
-                "Plan approved",
-                iteration=state.retry_count + 1
-            )
+            self.logger.info("Plan approved", iteration=state.retry_count + 1)
         else:
             # Add feedback to history
             feedback_entry = {
@@ -120,19 +118,19 @@ class SafetyGuardAgent:  # TODO: Inherit from Agent when ADK is installed
 
             updated_state = state.update(
                 feedback_history=feedback_history,
-                status=WorkflowStatus.PLANNING  # Back to planning
+                status=WorkflowStatus.PLANNING,  # Back to planning
             )
 
             self.logger.warning(
                 "Plan rejected",
                 iteration=state.retry_count + 1,
-                violations=validation_result["violations"]
+                violations=validation_result["violations"],
             )
 
         self.logger.trace_state_transition(
             from_state=state.status.value,
             to_state=updated_state.status.value,
-            decision=validation_result["decision"]
+            decision=validation_result["decision"],
         )
 
         return updated_state
@@ -158,16 +156,22 @@ class SafetyGuardAgent:  # TODO: Inherit from Agent when ADK is installed
         # Check 1: Plan length
         if len(plan) > Config.PLAN_MAX_LENGTH:
             violations.append("plan_too_long")
-            feedback.append(f"Plan exceeds maximum length of {Config.PLAN_MAX_LENGTH} characters")
+            feedback.append(
+                f"Plan exceeds maximum length of {Config.PLAN_MAX_LENGTH} characters"
+            )
 
         # Check 2: Disclaimer present
         if "disclaimer" not in plan.lower() and "consult" not in plan.lower():
             violations.append("missing_disclaimer")
-            feedback.append("Plan must include medical disclaimer and recommendation to consult healthcare provider")
+            feedback.append(
+                "Plan must include medical disclaimer and recommendation to consult healthcare provider"
+            )
 
         # Check 3: Medical claims with sources
         medical_keywords = ["treatment", "cure", "medication", "diagnosis"]
-        has_medical_claims = any(keyword in plan.lower() for keyword in medical_keywords)
+        has_medical_claims = any(
+            keyword in plan.lower() for keyword in medical_keywords
+        )
         has_sources = "source" in plan.lower() or "reference" in plan.lower()
 
         if has_medical_claims and not has_sources:
@@ -178,7 +182,9 @@ class SafetyGuardAgent:  # TODO: Inherit from Agent when ADK is installed
         if "high_blood_pressure" in risk_tags:
             if "reduce sodium" not in plan.lower() and "salt" not in plan.lower():
                 violations.append("missing_risk_mitigation")
-                feedback.append("Plan should address sodium reduction for high blood pressure")
+                feedback.append(
+                    "Plan should address sodium reduction for high blood pressure"
+                )
 
         # Decide based on violations
         if not violations:

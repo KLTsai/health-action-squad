@@ -10,8 +10,8 @@ import json
 import sys
 from pathlib import Path
 
-from src.core.orchestrator import Orchestrator
-from src.core.config import Config
+from src.workflow.orchestrator import Orchestrator
+from src.common.config import Config
 from src.utils.logger import get_logger
 
 
@@ -60,20 +60,15 @@ def main():
         description="Health Action Squad - AI Health Concierge"
     )
     parser.add_argument(
-        "--input",
-        "-i",
-        required=True,
-        help="Path to health report JSON file"
+        "--input", "-i", required=True, help="Path to health report JSON file"
     )
     parser.add_argument(
-        "--profile",
-        "-p",
-        help="Path to user profile JSON file (optional)"
+        "--profile", "-p", help="Path to user profile JSON file (optional)"
     )
     parser.add_argument(
         "--output",
         "-o",
-        help="Path to output file (default: output/result_<timestamp>.json)"
+        help="Path to output file (default: output/result_<timestamp>.json)",
     )
 
     args = parser.parse_args()
@@ -95,8 +90,7 @@ def main():
         # Execute workflow
         logger.info("Starting workflow execution")
         result = orchestrator.execute(
-            health_report=health_report,
-            user_profile=user_profile
+            health_report=health_report, user_profile=user_profile
         )
 
         # Save output
@@ -104,6 +98,7 @@ def main():
             output_path = Path(args.output)
         else:
             from datetime import datetime
+
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             output_path = Config.OUTPUT_DIR / f"result_{timestamp}.json"
 
@@ -121,7 +116,7 @@ def main():
         print("=" * 60)
 
         # Print plan preview
-        plan = result.get('plan', '')
+        plan = result.get("plan", "")
         if plan:
             print("\nGenerated Plan (preview):")
             print("-" * 60)

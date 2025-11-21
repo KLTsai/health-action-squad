@@ -7,8 +7,8 @@ from typing import Dict, Optional
 import uuid
 from datetime import datetime
 
-from .state import SessionState, WorkflowStatus, MAX_RETRIES
-from .config import Config
+from ..domain.state import SessionState, WorkflowStatus, MAX_RETRIES
+from ..common.config import Config
 from ..utils.logger import get_logger
 
 # Agent imports will be added when agents are implemented
@@ -70,8 +70,7 @@ class Orchestrator:
         )
 
         self.logger.info(
-            "Workflow started",
-            extra={"session_id": session_id, "timestamp": timestamp}
+            "Workflow started", extra={"session_id": session_id, "timestamp": timestamp}
         )
 
         try:
@@ -90,8 +89,8 @@ class Orchestrator:
                 extra={
                     "session_id": session_id,
                     "error": str(e),
-                    "status": state.status.value
-                }
+                    "status": state.status.value,
+                },
             )
             # Return fallback result
             return self._generate_fallback(state)
@@ -106,7 +105,9 @@ class Orchestrator:
         Returns:
             Updated SessionState with health_metrics and risk_tags
         """
-        self.logger.info("Starting report analysis", extra={"session_id": state.session_id})
+        self.logger.info(
+            "Starting report analysis", extra={"session_id": state.session_id}
+        )
 
         state = state.update(status=WorkflowStatus.ANALYZING)
 
@@ -122,15 +123,12 @@ class Orchestrator:
         state = state.update(
             health_metrics={"placeholder": "metrics"},
             risk_tags=["placeholder_risk"],
-            status=WorkflowStatus.PLANNING
+            status=WorkflowStatus.PLANNING,
         )
 
         self.logger.info(
             "Report analysis completed",
-            extra={
-                "session_id": state.session_id,
-                "risk_tags": state.risk_tags
-            }
+            extra={"session_id": state.session_id, "risk_tags": state.risk_tags},
         )
 
         return state
@@ -146,7 +144,7 @@ class Orchestrator:
         """
         self.logger.info(
             "Starting planning loop",
-            extra={"session_id": state.session_id, "max_retries": MAX_RETRIES}
+            extra={"session_id": state.session_id, "max_retries": MAX_RETRIES},
         )
 
         while state.retry_count < MAX_RETRIES:
@@ -155,8 +153,8 @@ class Orchestrator:
                 extra={
                     "session_id": state.session_id,
                     "iteration": state.retry_count + 1,
-                    "max_retries": MAX_RETRIES
-                }
+                    "max_retries": MAX_RETRIES,
+                },
             )
 
             # Generate plan
@@ -171,8 +169,8 @@ class Orchestrator:
                     "Plan approved",
                     extra={
                         "session_id": state.session_id,
-                        "iterations": state.retry_count + 1
-                    }
+                        "iterations": state.retry_count + 1,
+                    },
                 )
                 return state
 
@@ -182,10 +180,7 @@ class Orchestrator:
         # Circuit breaker triggered
         self.logger.warning(
             "Circuit breaker triggered - max retries exceeded",
-            extra={
-                "session_id": state.session_id,
-                "retry_count": state.retry_count
-            }
+            extra={"session_id": state.session_id, "retry_count": state.retry_count},
         )
 
         state = state.update(status=WorkflowStatus.FAILED)
@@ -283,7 +278,7 @@ class Orchestrator:
             "plan": fallback_plan,
             "risk_tags": state.risk_tags,
             "message": "Unable to generate personalized plan. Providing safe general recommendations.",
-            "error": state.error_message or "Max retries exceeded"
+            "error": state.error_message or "Max retries exceeded",
         }
 
     def _create_safe_fallback_plan(self, risk_tags: list) -> str:

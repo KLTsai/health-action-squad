@@ -72,9 +72,17 @@ User Input → Orchestrator → Analyst → Planner ⇄ Guard (max 3 loops) → 
 ```
 health-action-squad/
 ├── src/
-│   ├── core/              # Orchestrator, State, Config
+│   ├── domain/            # Business logic and domain models
+│   │   └── state.py       # SessionState, WorkflowStatus
+│   ├── workflow/          # Orchestration logic
+│   │   └── orchestrator.py # Main workflow coordinator
+│   ├── common/            # Shared configuration
+│   │   └── config.py      # Config management
+│   ├── ai/                # AI/LLM abstractions
+│   │   ├── client.py      # ModelClient factory
+│   │   ├── prompts.py     # Prompt loading utilities
+│   │   └── tools.py       # ADK Tool wrappers
 │   ├── agents/            # ADK Agents (Analyst, Planner, Guard)
-│   ├── tools/             # ADK Tool wrappers
 │   ├── utils/             # Logger, helpers
 │   └── api/               # FastAPI endpoints
 ├── resources/

@@ -11,6 +11,7 @@ from enum import Enum
 
 class WorkflowStatus(Enum):
     """Workflow status enumeration - ONLY these values allowed."""
+
     INIT = "init"
     ANALYZING = "analyzing"
     PLANNING = "planning"
@@ -56,7 +57,7 @@ class SessionState:
     # Error tracking
     error_message: str = ""
 
-    def update(self, **kwargs) -> 'SessionState':
+    def update(self, **kwargs) -> "SessionState":
         """Create a new SessionState with updated fields.
 
         Since SessionState is immutable (frozen=True), we use this method
@@ -72,6 +73,7 @@ class SessionState:
             new_state = state.update(status=WorkflowStatus.PLANNING, retry_count=1)
         """
         from dataclasses import replace
+
         return replace(self, **kwargs)
 
     def to_dict(self) -> Dict:
@@ -94,7 +96,7 @@ class SessionState:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict) -> 'SessionState':
+    def from_dict(cls, data: Dict) -> "SessionState":
         """Create SessionState from dictionary.
 
         Args:

@@ -103,5 +103,8 @@ class Config:
 try:
     Config.validate()
 except ValueError as e:
-    print(f"⚠️  Configuration warning: {e}")
-    print("   Please set up your .env file with required API keys")
+    import sys
+
+    # Use ASCII for compatibility
+    sys.stderr.write(f"Configuration warning: {e}\n")
+    sys.stderr.write("Please set up your .env file with required API keys\n")

@@ -5,10 +5,11 @@ MUST inherit from google.adk.agents.Agent.
 """
 
 from typing import Dict
+
 # from google.adk.agents import Agent  # Uncomment when ADK is installed
 
-from ..core.state import SessionState, WorkflowStatus
-from ..core.config import Config
+from ..domain.state import SessionState, WorkflowStatus
+from ..common.config import Config
 from ..utils.logger import AgentLogger
 
 
@@ -64,7 +65,7 @@ class LifestylePlannerAgent:  # TODO: Inherit from Agent when ADK is installed
         self.logger.info(
             "Starting lifestyle plan generation",
             retry_count=state.retry_count,
-            risk_tags=state.risk_tags
+            risk_tags=state.risk_tags,
         )
 
         # Validate state
@@ -84,21 +85,18 @@ class LifestylePlannerAgent:  # TODO: Inherit from Agent when ADK is installed
         plan = self._generate_plan_placeholder(context)
 
         # Update state
-        updated_state = state.update(
-            current_plan=plan,
-            status=WorkflowStatus.REVIEWING
-        )
+        updated_state = state.update(current_plan=plan, status=WorkflowStatus.REVIEWING)
 
         self.logger.trace_state_transition(
             from_state=state.status.value,
             to_state=updated_state.status.value,
-            plan_length=len(plan)
+            plan_length=len(plan),
         )
 
         self.logger.info(
             "Lifestyle plan generated",
             plan_length=len(plan),
-            iteration=state.retry_count + 1
+            iteration=state.retry_count + 1,
         )
 
         return updated_state

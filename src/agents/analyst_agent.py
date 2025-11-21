@@ -5,10 +5,11 @@ MUST inherit from google.adk.agents.Agent.
 """
 
 from typing import Dict, List
+
 # from google.adk.agents import Agent  # Uncomment when ADK is installed
 
-from ..core.state import SessionState, WorkflowStatus
-from ..core.config import Config
+from ..domain.state import SessionState, WorkflowStatus
+from ..common.config import Config
 from ..utils.logger import AgentLogger
 
 
@@ -75,20 +76,20 @@ class ReportAnalystAgent:  # TODO: Inherit from Agent when ADK is installed
         updated_state = state.update(
             health_metrics=health_metrics,
             risk_tags=risk_tags,
-            status=WorkflowStatus.PLANNING
+            status=WorkflowStatus.PLANNING,
         )
 
         self.logger.trace_state_transition(
             from_state=state.status.value,
             to_state=updated_state.status.value,
             health_metrics_count=len(health_metrics),
-            risk_tags_count=len(risk_tags)
+            risk_tags_count=len(risk_tags),
         )
 
         self.logger.info(
             "Health report analysis completed",
             health_metrics=health_metrics,
-            risk_tags=risk_tags
+            risk_tags=risk_tags,
         )
 
         return updated_state
@@ -110,7 +111,9 @@ class ReportAnalystAgent:  # TODO: Inherit from Agent when ADK is installed
             "cholesterol_ldl": health_report.get("cholesterol_ldl", 0),
             "cholesterol_hdl": health_report.get("cholesterol_hdl", 0),
             "blood_pressure_systolic": health_report.get("blood_pressure_systolic", 0),
-            "blood_pressure_diastolic": health_report.get("blood_pressure_diastolic", 0),
+            "blood_pressure_diastolic": health_report.get(
+                "blood_pressure_diastolic", 0
+            ),
             "glucose": health_report.get("glucose", 0),
             "bmi": health_report.get("bmi", 0),
         }
@@ -125,8 +128,10 @@ class ReportAnalystAgent:  # TODO: Inherit from Agent when ADK is installed
             risk_tags.append("high_ldl")
 
         # Blood pressure
-        if (health_metrics["blood_pressure_systolic"] > 130 or
-            health_metrics["blood_pressure_diastolic"] > 80):
+        if (
+            health_metrics["blood_pressure_systolic"] > 130
+            or health_metrics["blood_pressure_diastolic"] > 80
+        ):
             risk_tags.append("high_blood_pressure")
 
         # Glucose
