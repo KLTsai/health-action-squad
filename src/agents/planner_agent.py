@@ -1,11 +1,24 @@
 """LifestylePlannerAgent - Lifestyle plan generation agent.
 
 Generates personalized lifestyle plans using Google ADK.
+
+State Injection:
+- Uses ADK placeholder syntax for automatic state injection:
+  - {health_analysis} - From ReportAnalyst output
+  - {user_profile} - From initial state
+  - {validation_result} - From SafetyGuard feedback on retry
+
+Logging:
+- Agent creation is logged in orchestrator during workflow initialization
+- Execution tracing with iteration number is handled by orchestrator.execute()
 """
 
 from google.adk.agents import LlmAgent
 
 from ..ai import load_prompt
+from ..utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class LifestylePlannerAgent:
@@ -32,6 +45,14 @@ class LifestylePlannerAgent:
         """
         # Load system prompt from external file
         system_prompt = load_prompt("planner_prompt")
+
+        logger.info(
+            "LifestylePlanner agent created",
+            model=model_name,
+            output_key="current_plan",
+            description="Generates personalized lifestyle plans from health metrics",
+            state_injection_fields=["health_analysis", "user_profile", "validation_result"]
+        )
 
         # Add state injection placeholders
         enhanced_prompt = f"""{system_prompt}

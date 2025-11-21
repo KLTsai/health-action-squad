@@ -2,17 +2,27 @@
 
 Coordinates the Analyst → Planner → Guard loop with circuit breaker protection.
 Uses Google ADK declarative workflow patterns.
+
+Logging Strategy:
+- Session initialization with metadata
+- Agent creation with model and capability details
+- Workflow execution lifecycle (start, completion, errors)
+- Loop iterations with iteration counters
+- Guard decisions (APPROVE/REJECT) with structured feedback
+- Fallback triggers with error context
+- All logging uses AgentLogger for structured A2A tracing
 """
 
 from typing import Dict, Optional
 import uuid
 from datetime import datetime
+import json
 
 from google.adk.agents import SequentialAgent, LoopAgent
 
 from ..domain.state import SessionState, WorkflowStatus, MAX_RETRIES
 from ..common.config import Config
-from ..utils.logger import get_logger
+from ..utils.logger import get_logger, AgentLogger
 from ..agents.analyst_agent import ReportAnalystAgent
 from ..agents.planner_agent import LifestylePlannerAgent
 from ..agents.guard_agent import SafetyGuardAgent
@@ -44,11 +54,24 @@ class Orchestrator:
         self.config = Config()
         self.logger = logger
         self.model_name = model_name
+        self.agent_logger = AgentLogger("Orchestrator")
+
+        logger.info(
+            "Orchestrator initialization starting",
+            model=model_name,
+            max_retries=MAX_RETRIES
+        )
 
         # Create ADK agents
         self.analyst_agent = ReportAnalystAgent.create_agent(model_name)
         self.planner_agent = LifestylePlannerAgent.create_agent(model_name)
         self.guard_agent = SafetyGuardAgent.create_agent(model_name)
+
+        logger.info(
+            "ADK agents created",
+            agents=["ReportAnalyst", "LifestylePlanner", "SafetyGuard"],
+            model=model_name
+        )
 
         # Create Planner-Guard retry loop
         self.planning_loop = LoopAgent(
@@ -65,12 +88,11 @@ class Orchestrator:
             description="Health report analysis → lifestyle plan generation with safety validation"
         )
 
-        self.logger.info(
+        logger.info(
             "ADK Orchestrator initialized",
-            extra={
-                "model": model_name,
-                "workflow": "SequentialAgent[Analyst, LoopAgent[Planner, Guard]]"
-            }
+            workflow_structure="SequentialAgent[Analyst, LoopAgent[Planner, Guard]]",
+            max_loop_iterations=MAX_RETRIES,
+            model=model_name
         )
 
     async def execute(self, health_report: Dict, user_profile: Optional[Dict] = None) -> Dict:

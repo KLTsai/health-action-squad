@@ -1,11 +1,18 @@
 """ReportAnalystAgent - Health report parsing agent.
 
 Parses health reports into structured metrics and risk tags using Google ADK.
+
+Logging:
+- Agent creation is logged in orchestrator during workflow initialization
+- Execution tracing is handled by orchestrator.execute()
 """
 
 from google.adk.agents import LlmAgent
 
 from ..ai import load_prompt
+from ..utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class ReportAnalystAgent:
@@ -33,6 +40,13 @@ class ReportAnalystAgent:
         """
         # Load system prompt from external file
         system_prompt = load_prompt("analyst_prompt")
+
+        logger.info(
+            "ReportAnalyst agent created",
+            model=model_name,
+            output_key="health_analysis",
+            description="Parses health reports into structured metrics and risk tags"
+        )
 
         # Add structured output instructions
         enhanced_prompt = f"""{system_prompt}
