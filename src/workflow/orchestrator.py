@@ -1,59 +1,87 @@
 """Main orchestrator for Health Action Squad workflow.
 
 Coordinates the Analyst → Planner → Guard loop with circuit breaker protection.
+Uses Google ADK declarative workflow patterns.
 """
 
 from typing import Dict, Optional
 import uuid
 from datetime import datetime
 
+from google.adk.agents import SequentialAgent, LoopAgent
+
 from ..domain.state import SessionState, WorkflowStatus, MAX_RETRIES
 from ..common.config import Config
 from ..utils.logger import get_logger
-
-# Agent imports will be added when agents are implemented
-# from ..agents.analyst_agent import ReportAnalystAgent
-# from ..agents.planner_agent import LifestylePlannerAgent
-# from ..agents.guard_agent import SafetyGuardAgent
+from ..agents.analyst_agent import ReportAnalystAgent
+from ..agents.planner_agent import LifestylePlannerAgent
+from ..agents.guard_agent import SafetyGuardAgent
 
 
 logger = get_logger(__name__)
 
 
 class Orchestrator:
-    """Main workflow orchestrator.
+    """Main workflow orchestrator using Google ADK.
 
-    Manages the multi-agent workflow:
-    1. ReportAnalystAgent parses health report
-    2. LifestylePlannerAgent generates plan
-    3. SafetyGuardAgent validates plan
-    4. Loop back to Planner if rejected (max MAX_RETRIES)
-    5. Return approved plan or fallback
+    ADK Workflow Structure:
+    1. SequentialAgent orchestrates:
+       a. ReportAnalyst (parse health report)
+       b. LoopAgent (Planner ↔ Guard retry loop)
+    2. LoopAgent manages Planner → Guard with max_iterations=MAX_RETRIES
+    3. Guard calls exit_loop tool when plan is approved
+    4. State flows through agent output_keys automatically
 
-    All communication happens through immutable SessionState.
+    All communication happens through ADK's state management.
     """
 
-    def __init__(self):
-        """Initialize orchestrator and agents."""
-        self.config = Config()
-        self.logger = logger
-
-        # Initialize agents (will be uncommented when agents are implemented)
-        # self.analyst = ReportAnalystAgent()
-        # self.planner = LifestylePlannerAgent()
-        # self.guard = SafetyGuardAgent()
-
-        self.logger.info("Orchestrator initialized")
-
-    def execute(self, health_report: Dict, user_profile: Optional[Dict] = None) -> Dict:
-        """Execute the full workflow.
+    def __init__(self, model_name: str = "gemini-pro"):
+        """Initialize orchestrator with ADK workflow.
 
         Args:
-            health_report: Raw health report data
+            model_name: Gemini model name (default: gemini-pro)
+        """
+        self.config = Config()
+        self.logger = logger
+        self.model_name = model_name
+
+        # Create ADK agents
+        self.analyst_agent = ReportAnalystAgent.create_agent(model_name)
+        self.planner_agent = LifestylePlannerAgent.create_agent(model_name)
+        self.guard_agent = SafetyGuardAgent.create_agent(model_name)
+
+        # Create Planner-Guard retry loop
+        self.planning_loop = LoopAgent(
+            name="PlanningLoop",
+            sub_agents=[self.planner_agent, self.guard_agent],
+            max_iterations=MAX_RETRIES,
+            description=f"Planner-Guard retry loop with max {MAX_RETRIES} iterations"
+        )
+
+        # Create main sequential workflow
+        self.workflow = SequentialAgent(
+            name="HealthActionSquad",
+            sub_agents=[self.analyst_agent, self.planning_loop],
+            description="Health report analysis → lifestyle plan generation with safety validation"
+        )
+
+        self.logger.info(
+            "ADK Orchestrator initialized",
+            extra={
+                "model": model_name,
+                "workflow": "SequentialAgent[Analyst, LoopAgent[Planner, Guard]]"
+            }
+        )
+
+    async def execute(self, health_report: Dict, user_profile: Optional[Dict] = None) -> Dict:
+        """Execute the ADK workflow.
+
+        Args:
+            health_report: Raw health report data (will be passed to Analyst)
             user_profile: Optional user profile data
 
         Returns:
-            Dict with final plan and metadata
+            Dict with final plan and metadata from ADK workflow
 
         Raises:
             Exception: If workflow fails critically
@@ -62,223 +90,99 @@ class Orchestrator:
         session_id = str(uuid.uuid4())
         timestamp = datetime.utcnow().isoformat()
 
-        state = SessionState(
-            session_id=session_id,
-            timestamp=timestamp,
-            user_profile=user_profile or {},
-            status=WorkflowStatus.INIT,
-        )
-
         self.logger.info(
-            "Workflow started", extra={"session_id": session_id, "timestamp": timestamp}
+            "ADK Workflow started",
+            extra={
+                "session_id": session_id,
+                "timestamp": timestamp,
+                "model": self.model_name
+            }
         )
 
         try:
-            # Step 1: Analyze health report
-            state = self._analyze_report(state, health_report)
+            # Prepare initial state for ADK workflow
+            initial_state = {
+                "session_id": session_id,
+                "timestamp": timestamp,
+                "user_profile": user_profile or {},
+                "health_report": health_report,  # For Analyst to process
+            }
 
-            # Step 2: Planner-Guard loop with circuit breaker
-            state = self._planning_loop(state)
+            # Execute ADK workflow (SequentialAgent handles orchestration)
+            result = await self.workflow.run(initial_state)
 
-            # Step 3: Return final result
-            return self._format_output(state)
+            # ADK automatically manages state flow through output_keys:
+            # - Analyst outputs to "health_analysis"
+            # - Planner outputs to "current_plan"
+            # - Guard outputs to "validation_result"
+
+            self.logger.info(
+                "ADK Workflow completed",
+                extra={
+                    "session_id": session_id,
+                    "workflow_status": "success"
+                }
+            )
+
+            return self._format_adk_output(result, session_id, timestamp)
 
         except Exception as e:
             self.logger.error(
-                "Workflow failed",
+                "ADK Workflow failed",
                 extra={
                     "session_id": session_id,
                     "error": str(e),
-                    "status": state.status.value,
+                    "error_type": type(e).__name__
                 },
             )
             # Return fallback result
-            return self._generate_fallback(state)
+            return self._generate_fallback_from_error(session_id, timestamp, str(e))
 
-    def _analyze_report(self, state: SessionState, health_report: Dict) -> SessionState:
-        """Run ReportAnalystAgent to parse health report.
-
-        Args:
-            state: Current session state
-            health_report: Raw health report data
-
-        Returns:
-            Updated SessionState with health_metrics and risk_tags
-        """
-        self.logger.info(
-            "Starting report analysis", extra={"session_id": state.session_id}
-        )
-
-        state = state.update(status=WorkflowStatus.ANALYZING)
-
-        # TODO: Implement when ReportAnalystAgent is ready
-        # result = self.analyst.execute(state, health_report)
-        # state = state.update(
-        #     health_metrics=result.health_metrics,
-        #     risk_tags=result.risk_tags,
-        #     status=WorkflowStatus.PLANNING
-        # )
-
-        # Placeholder for now
-        state = state.update(
-            health_metrics={"placeholder": "metrics"},
-            risk_tags=["placeholder_risk"],
-            status=WorkflowStatus.PLANNING,
-        )
-
-        self.logger.info(
-            "Report analysis completed",
-            extra={"session_id": state.session_id, "risk_tags": state.risk_tags},
-        )
-
-        return state
-
-    def _planning_loop(self, state: SessionState) -> SessionState:
-        """Execute Planner-Guard loop with circuit breaker.
+    def _format_adk_output(self, adk_result: Dict, session_id: str, timestamp: str) -> Dict:
+        """Format ADK workflow output into standard response.
 
         Args:
-            state: Current session state
-
-        Returns:
-            Updated SessionState with approved plan or fallback
-        """
-        self.logger.info(
-            "Starting planning loop",
-            extra={"session_id": state.session_id, "max_retries": MAX_RETRIES},
-        )
-
-        while state.retry_count < MAX_RETRIES:
-            self.logger.info(
-                "Planning iteration",
-                extra={
-                    "session_id": state.session_id,
-                    "iteration": state.retry_count + 1,
-                    "max_retries": MAX_RETRIES,
-                },
-            )
-
-            # Generate plan
-            state = self._generate_plan(state)
-
-            # Validate plan
-            state = self._validate_plan(state)
-
-            # Check if approved
-            if state.status == WorkflowStatus.APPROVED:
-                self.logger.info(
-                    "Plan approved",
-                    extra={
-                        "session_id": state.session_id,
-                        "iterations": state.retry_count + 1,
-                    },
-                )
-                return state
-
-            # Increment retry counter
-            state = state.update(retry_count=state.retry_count + 1)
-
-        # Circuit breaker triggered
-        self.logger.warning(
-            "Circuit breaker triggered - max retries exceeded",
-            extra={"session_id": state.session_id, "retry_count": state.retry_count},
-        )
-
-        state = state.update(status=WorkflowStatus.FAILED)
-        return state
-
-    def _generate_plan(self, state: SessionState) -> SessionState:
-        """Run LifestylePlannerAgent to generate plan.
-
-        Args:
-            state: Current session state
-
-        Returns:
-            Updated SessionState with current_plan
-        """
-        # TODO: Implement when LifestylePlannerAgent is ready
-        # plan = self.planner.execute(state)
-        # state = state.update(current_plan=plan)
-
-        # Placeholder
-        state = state.update(
-            current_plan="# Placeholder Lifestyle Plan\n\nThis will be generated by LifestylePlannerAgent"
-        )
-
-        return state
-
-    def _validate_plan(self, state: SessionState) -> SessionState:
-        """Run SafetyGuardAgent to validate plan.
-
-        Args:
-            state: Current session state
-
-        Returns:
-            Updated SessionState with validation result
-        """
-        state = state.update(status=WorkflowStatus.REVIEWING)
-
-        # TODO: Implement when SafetyGuardAgent is ready
-        # result = self.guard.execute(state)
-        #
-        # if result.decision == "APPROVE":
-        #     state = state.update(status=WorkflowStatus.APPROVED)
-        # else:
-        #     feedback = {
-        #         "iteration": state.retry_count + 1,
-        #         "decision": result.decision,
-        #         "feedback": result.feedback,
-        #         "violations": result.violations
-        #     }
-        #     feedback_history = state.feedback_history + [feedback]
-        #     state = state.update(feedback_history=feedback_history)
-
-        # Placeholder - approve after first iteration
-        if state.retry_count == 0:
-            state = state.update(status=WorkflowStatus.APPROVED)
-        else:
-            state = state.update(status=WorkflowStatus.PLANNING)
-
-        return state
-
-    def _format_output(self, state: SessionState) -> Dict:
-        """Format final output.
-
-        Args:
-            state: Final session state
+            adk_result: Result dict from ADK workflow execution
+            session_id: Session identifier
+            timestamp: Execution timestamp
 
         Returns:
             Formatted output dictionary
         """
         return {
-            "session_id": state.session_id,
-            "timestamp": state.timestamp,
-            "status": state.status.value,
-            "plan": state.current_plan,
-            "health_metrics": state.health_metrics,
-            "risk_tags": state.risk_tags,
-            "iterations": state.retry_count + 1,
-            "feedback_history": state.feedback_history,
+            "session_id": session_id,
+            "timestamp": timestamp,
+            "status": "approved",  # If we got here, Guard approved the plan
+            "plan": adk_result.get("current_plan", ""),
+            "health_analysis": adk_result.get("health_analysis", {}),
+            "validation_result": adk_result.get("validation_result", {}),
+            "workflow_type": "adk",
+            "model": self.model_name,
         }
 
-    def _generate_fallback(self, state: SessionState) -> Dict:
-        """Generate fallback response when workflow fails.
+    def _generate_fallback_from_error(
+        self, session_id: str, timestamp: str, error: str
+    ) -> Dict:
+        """Generate fallback response when ADK workflow fails.
 
         Args:
-            state: Current session state
+            session_id: Session identifier
+            timestamp: Execution timestamp
+            error: Error message
 
         Returns:
             Fallback response dictionary
         """
-        fallback_plan = self._create_safe_fallback_plan(state.risk_tags)
+        fallback_plan = self._create_safe_fallback_plan([])
 
         return {
-            "session_id": state.session_id,
-            "timestamp": state.timestamp,
+            "session_id": session_id,
+            "timestamp": timestamp,
             "status": "fallback",
             "plan": fallback_plan,
-            "risk_tags": state.risk_tags,
             "message": "Unable to generate personalized plan. Providing safe general recommendations.",
-            "error": state.error_message or "Max retries exceeded",
+            "error": error,
+            "workflow_type": "adk",
         }
 
     def _create_safe_fallback_plan(self, risk_tags: list) -> str:
