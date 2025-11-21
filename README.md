@@ -42,28 +42,59 @@ uvicorn src.api.server:app --reload --port 8000
 
 ---
 
-## 🏗️ Architecture Overview
+## 🏗️ ADK Architecture Overview
 
-### Multi-Agent System
-- **ReportAnalystAgent**: Parses health reports → metrics + risk tags
-- **LifestylePlannerAgent**: Generates personalized plans using ADK tools
-- **SafetyGuardAgent**: Validates plans against safety policies
+### ADK Workflow (Declarative Composition)
 
-### Workflow Pattern
 ```
-User Input → Orchestrator → Analyst → Planner ⇄ Guard (max 3 loops) → Output
-                                        ↓ REJECT
-                                      Feedback
-                                        ↓ retry_count++
-                                      Planner
+Orchestrator (async execute)
+    ↓
+HealthActionSquad (SequentialAgent)
+    ├─> ReportAnalyst (LlmAgent)
+    │     └─> output_key: health_analysis
+    │
+    └─> PlanningLoop (LoopAgent, max_iterations=3)
+          ├─> LifestylePlanner (LlmAgent)
+          │     └─> output_key: current_plan
+          │           uses: {health_analysis}, {user_profile}, {validation_result}
+          │
+          └─> SafetyGuard (LlmAgent)
+                └─> output_key: validation_result
+                      tools: [exit_loop]
+                      APPROVE → calls exit_loop → workflow END
+                      REJECT → loop continues (if < max_iterations)
 ```
+
+### ADK Agent Factory Pattern
+
+All agents use **factory pattern** returning `LlmAgent` instances:
+
+```python
+from src.agents.analyst_agent import ReportAnalystAgent
+from src.agents.planner_agent import LifestylePlannerAgent
+from src.agents.guard_agent import SafetyGuardAgent
+
+# Create ADK agents
+analyst = ReportAnalystAgent.create_agent(model_name="gemini-pro")
+planner = LifestylePlannerAgent.create_agent(model_name="gemini-pro")
+guard = SafetyGuardAgent.create_agent(model_name="gemini-pro")
+```
+
+### Key ADK Features
+
+- **Declarative Workflows**: `SequentialAgent` and `LoopAgent` for orchestration
+- **Automatic State Injection**: Prompts use `{placeholders}` for state
+- **Tool-based Control**: `exit_loop` tool terminates retry loop
+- **Async Execution**: `await workflow.run()` for concurrent LLM calls
+- **No Manual Loops**: ADK manages iterations and state flow
 
 ### Tech Stack
-- **Framework**: Google ADK (Agent Development Kit)
-- **LLM**: Gemini Pro
+
+- **Framework**: Google ADK 1.19.0 (Agent Development Kit)
+- **LLM**: Gemini Pro (via ADK ModelClient)
 - **API**: FastAPI
-- **State Management**: Immutable SessionState
-- **Safety**: Policy-based validation (YAML)
+- **State Management**: ADK automatic state injection
+- **Safety**: Policy-based validation (YAML) with `exit_loop` termination
 
 ---
 
