@@ -28,7 +28,7 @@ class SafetyGuardAgent:
     """
 
     @staticmethod
-    def create_agent(model_name: str = "gemini-pro") -> LlmAgent:
+    def create_agent(model_name: str = "gemini-2.5-flash") -> LlmAgent:
         """Create ADK LlmAgent for safety validation.
 
         Args:

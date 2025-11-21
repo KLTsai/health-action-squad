@@ -21,11 +21,11 @@ class LifestylePlannerAgent:
     """
 
     @staticmethod
-    def create_agent(model_name: str = "gemini-pro") -> LlmAgent:
+    def create_agent(model_name: str = "gemini-2.5-flash") -> LlmAgent:
         """Create ADK LlmAgent for lifestyle plan generation.
 
         Args:
-            model_name: Gemini model name (default: gemini-pro)
+            model_name: Gemini model name (default: gemini-2.5-flash)
 
         Returns:
             Configured LlmAgent instance

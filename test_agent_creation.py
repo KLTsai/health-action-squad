@@ -19,7 +19,7 @@ from google.adk.agents import LlmAgent
 def test_analyst_agent():
     """Test ReportAnalystAgent creation."""
     print("Testing ReportAnalystAgent...")
-    agent = ReportAnalystAgent.create_agent(model_name="gemini-pro")
+    agent = ReportAnalystAgent.create_agent(model_name="gemini-2.5-flash")
 
     assert isinstance(agent, LlmAgent), "Agent should be LlmAgent instance"
     assert agent.name == "ReportAnalyst", f"Expected name 'ReportAnalyst', got {agent.name}"
@@ -35,7 +35,7 @@ def test_analyst_agent():
 def test_planner_agent():
     """Test LifestylePlannerAgent creation."""
     print("\nTesting LifestylePlannerAgent...")
-    agent = LifestylePlannerAgent.create_agent(model_name="gemini-pro")
+    agent = LifestylePlannerAgent.create_agent(model_name="gemini-2.5-flash")
 
     assert isinstance(agent, LlmAgent), "Agent should be LlmAgent instance"
     assert agent.name == "LifestylePlanner", f"Expected name 'LifestylePlanner', got {agent.name}"
@@ -51,7 +51,7 @@ def test_planner_agent():
 def test_guard_agent():
     """Test SafetyGuardAgent creation."""
     print("\nTesting SafetyGuardAgent...")
-    agent = SafetyGuardAgent.create_agent(model_name="gemini-pro")
+    agent = SafetyGuardAgent.create_agent(model_name="gemini-2.5-flash")
 
     assert isinstance(agent, LlmAgent), "Agent should be LlmAgent instance"
     assert agent.name == "SafetyGuard", f"Expected name 'SafetyGuard', got {agent.name}"
