@@ -31,6 +31,7 @@ class Config:
     LOGS_DIR = PROJECT_ROOT / "logs"
 
     # API Keys
+    # Note: GOOGLE_API_KEY is kept for backwards compatibility but not currently used
     GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "")
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
 
@@ -40,8 +41,9 @@ class Config:
     MAX_TOKENS: int = int(os.getenv("MAX_TOKENS", "2048"))
 
     # Workflow configuration
+    # Note: MAX_RETRIES is defined here but currently src/domain/state.py uses a hardcoded value
+    # This may be used in future for dynamic configuration
     MAX_RETRIES: int = int(os.getenv("MAX_RETRIES", "3"))
-    PLAN_MAX_LENGTH: int = int(os.getenv("PLAN_MAX_LENGTH", "1500"))
 
     # API server configuration
     API_HOST: str = os.getenv("API_HOST", "0.0.0.0")

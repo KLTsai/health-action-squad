@@ -27,7 +27,9 @@ pip install -r requirements.txt
 
 # Configure environment variables
 cp .env.example .env
-# Edit .env with your API keys
+# Edit .env and set your GEMINI_API_KEY (get from https://aistudio.google.com/app/apikey)
+# Required: GEMINI_API_KEY
+# Optional: MODEL_NAME, TEMPERATURE, MAX_TOKENS, LOG_LEVEL
 ```
 
 ### 3. Run the Application

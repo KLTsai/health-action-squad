@@ -6,6 +6,7 @@ Usage:
 """
 
 import argparse
+import asyncio
 import json
 import sys
 from pathlib import Path
@@ -54,8 +55,8 @@ def save_output(data: dict, output_path: Path) -> None:
     logger.info(f"Output saved to: {output_path}")
 
 
-def main():
-    """Main entry point."""
+async def main():
+    """Main entry point (async)."""
     parser = argparse.ArgumentParser(
         description="Health Action Squad - AI Health Concierge"
     )
@@ -87,9 +88,9 @@ def main():
         logger.info("Initializing orchestrator")
         orchestrator = Orchestrator()
 
-        # Execute workflow
+        # Execute workflow (async call with await)
         logger.info("Starting workflow execution")
-        result = orchestrator.execute(
+        result = await orchestrator.execute(
             health_report=health_report, user_profile=user_profile
         )
 
@@ -145,4 +146,4 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(asyncio.run(main()))

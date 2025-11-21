@@ -366,8 +366,15 @@ Initial State
 pip install google-adk
 pip install -r requirements.txt
 
-# Run main entry point
+# Configure environment variables
+cp .env.example .env
+# Edit .env and set GEMINI_API_KEY (get from https://aistudio.google.com/app/apikey)
+# Required: GEMINI_API_KEY
+# Optional: MODEL_NAME, TEMPERATURE, MAX_TOKENS, LOG_LEVEL, LOG_FORMAT
+
+# Run main entry point (async execution via asyncio.run())
 python main.py --input path/to/health_report.json
+python main.py --input resources/data/sample_health_report.json --output output/result.json
 
 # Testing
 pytest tests/unit/              # Unit tests
@@ -379,7 +386,7 @@ black src/ tests/              # Format code
 pylint src/ tests/             # Lint check
 mypy src/ tests/               # Type check
 
-# Run API server
+# Run API server (when implemented)
 uvicorn src.api.server:app --reload
 ```
 
