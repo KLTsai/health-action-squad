@@ -5,12 +5,13 @@ MUST inherit from google.adk.agents.Agent.
 """
 
 from typing import Dict
+from google.generativeai import GenerativeModel
 
 # from google.adk.agents import Agent  # Uncomment when ADK is installed
 
 from ..domain.state import SessionState, WorkflowStatus
-from ..common.config import Config
 from ..utils.logger import AgentLogger
+from ..ai import AIClientFactory, load_prompt
 
 
 class LifestylePlannerAgent:  # TODO: Inherit from Agent when ADK is installed
@@ -26,18 +27,24 @@ class LifestylePlannerAgent:  # TODO: Inherit from Agent when ADK is installed
     System prompt loaded from: resources/prompts/planner_prompt.txt
     """
 
-    def __init__(self):
-        """Initialize LifestylePlannerAgent."""
-        self.config = Config()
+    def __init__(self, model: GenerativeModel = None):
+        """Initialize LifestylePlannerAgent.
+
+        Args:
+            model: Optional GenerativeModel instance. If None, creates default client.
+        """
         self.logger = AgentLogger("LifestylePlannerAgent")
+
+        # Use centralized AI client
+        self.model = model or AIClientFactory.create_default_client()
 
         # Load system prompt from file (NOT hardcoded)
         self.system_prompt = self._load_prompt()
 
         # TODO: Initialize ADK tools
-        # self.search_tool = GoogleSearchTool()
+        # self.search_tool = MedicalKnowledgeSearchTool()
 
-        self.logger.info("LifestylePlannerAgent initialized")
+        self.logger.info("LifestylePlannerAgent initialized with Gemini model")
 
     def _load_prompt(self) -> str:
         """Load system prompt from resources/prompts/planner_prompt.txt.
@@ -45,7 +52,7 @@ class LifestylePlannerAgent:  # TODO: Inherit from Agent when ADK is installed
         Returns:
             System prompt text
         """
-        return Config.get_prompt(Config.PLANNER_PROMPT_PATH)
+        return load_prompt("planner_prompt")
 
     def execute(self, state: SessionState) -> SessionState:
         """Generate lifestyle plan.

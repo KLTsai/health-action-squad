@@ -83,16 +83,20 @@
 ```
 health-action-squad/
 ├── src/
-│   ├── core/
-│   │   ├── orchestrator.py    # Main workflow orchestrator
-│   │   ├── state.py           # SessionState dataclass (frozen=True)
+│   ├── domain/                # Domain models & business logic
+│   │   └── state.py           # SessionState dataclass (frozen=True)
+│   ├── workflow/              # Orchestration logic
+│   │   └── orchestrator.py    # Main workflow orchestrator
+│   ├── common/                # Shared configuration
 │   │   └── config.py          # Configuration management
-│   ├── agents/
+│   ├── ai/                    # AI/LLM abstractions
+│   │   ├── client.py          # AIClientFactory (Gemini)
+│   │   ├── prompts.py         # Prompt loading utilities
+│   │   └── tools.py           # ADK Tool wrappers
+│   ├── agents/                # ADK Agents
 │   │   ├── analyst_agent.py   # ReportAnalystAgent
 │   │   ├── planner_agent.py   # LifestylePlannerAgent
 │   │   └── guard_agent.py     # SafetyGuardAgent
-│   ├── tools/
-│   │   └── search_tool.py     # ADK search wrapper
 │   ├── utils/
 │   │   └── logger.py          # Structured logging with A2A trace
 │   └── api/
@@ -146,37 +150,84 @@ class SessionState:
 
 ---
 
+## 🤖 AI Client Management
+
+### AIClientFactory (src/ai/client.py)
+**Centralized LLM client management for all agents.**
+
+```python
+from src.ai import AIClientFactory
+
+# Create default client (uses Config settings)
+client = AIClientFactory.create_default_client()
+
+# Or create custom client
+client = AIClientFactory.create_gemini_client(
+    api_key="your_key",
+    model="gemini-pro",
+    temperature=0.7,
+    max_output_tokens=2048
+)
+```
+
+**Key Features:**
+- ✅ Single source of truth for model configuration
+- ✅ Easy model switching (Gemini → Claude → GPT)
+- ✅ Consistent generation config across all agents
+- ✅ Environment-aware API key management
+
+### Prompt Management (src/ai/prompts.py)
+**Utilities for loading external prompts.**
+
+```python
+from src.ai import load_prompt, list_available_prompts
+
+# Load agent prompt
+system_prompt = load_prompt("analyst_prompt")  # loads analyst_prompt.txt
+
+# List all available prompts
+prompts = list_available_prompts()  # ['analyst_prompt', 'planner_prompt', 'guard_prompt']
+```
+
+---
+
 ## 🤖 Agent Responsibilities
 
 ### ReportAnalystAgent
 - **Purpose**: Parse health reports into metrics/risk tags
 - **Input**: Raw health report (from SessionState)
 - **Output**: Updated SessionState with health_metrics and risk_tags
+- **LLM Client**: Uses AIClientFactory.create_default_client() (Gemini Pro)
 - **Constraints**:
   - NO external queries
   - MUST conform to SessionState schema
   - MUST use prompt from resources/prompts/analyst_prompt.txt
+  - Uses centralized AI client from ai/ module
 
 ### LifestylePlannerAgent
 - **Purpose**: Generate personalized Markdown lifestyle plan
 - **Input**: health_metrics, risk_tags, user_profile (from SessionState)
 - **Output**: Updated SessionState with current_plan
+- **LLM Client**: Uses AIClientFactory.create_default_client() (Gemini Pro)
 - **Constraints**:
-  - MUST use ADK Tool for knowledge search (GoogleSearchTool)
+  - MUST use ADK Tool for knowledge search (MedicalKnowledgeSearchTool)
   - Plan length ≤ 1500 words
   - Medical recommendations MUST cite sources
   - MUST incorporate Guard feedback in retry loop
   - MUST use prompt from resources/prompts/planner_prompt.txt
+  - Uses centralized AI client from ai/ module
 
 ### SafetyGuardAgent
 - **Purpose**: Validate current_plan against safety policies
 - **Input**: current_plan, risk_tags (from SessionState)
 - **Output**: Updated SessionState with feedback_history and decision
+- **LLM Client**: Uses AIClientFactory.create_default_client() (Gemini Pro)
 - **Constraints**:
   - MUST use resources/policies/safety_rules.yaml
   - MUST output: decision (APPROVE/REJECT), feedback, violations
   - On REJECT: trigger Planner retry (max 3)
   - MUST use prompt from resources/prompts/guard_prompt.txt
+  - Uses centralized AI client from ai/ module
 
 ---
 

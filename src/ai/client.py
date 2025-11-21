@@ -5,6 +5,8 @@ Provides centralized ModelClient management for all agents.
 
 from typing import Optional
 import os
+import google.generativeai as genai
+from google.generativeai import GenerativeModel
 
 
 class AIClientFactory:
@@ -18,48 +20,55 @@ class AIClientFactory:
         api_key: Optional[str] = None,
         model: str = "gemini-pro",
         temperature: float = 0.7,
-    ):
-        """Create a Gemini ModelClient.
+        max_output_tokens: int = 2048,
+    ) -> GenerativeModel:
+        """Create a Gemini GenerativeModel client.
 
         Args:
             api_key: Gemini API key (falls back to env var GEMINI_API_KEY)
             model: Model name (default: gemini-pro)
             temperature: Sampling temperature (default: 0.7)
+            max_output_tokens: Maximum tokens in response (default: 2048)
 
         Returns:
-            Configured ModelClient instance
+            Configured GenerativeModel instance
 
         Raises:
             ValueError: If API key is not provided
         """
-        # TODO: Implement when Google ADK is installed
-        # from google.adk.clients import ModelClient
-
         api_key = api_key or os.getenv("GEMINI_API_KEY")
         if not api_key:
             raise ValueError("GEMINI_API_KEY must be provided or set in environment")
 
-        # Placeholder - will be implemented with ADK
-        # return ModelClient(
-        #     model=model,
-        #     api_key=api_key,
-        #     temperature=temperature
-        # )
+        # Configure Gemini API
+        genai.configure(api_key=api_key)
 
-        raise NotImplementedError("ADK ModelClient integration pending")
+        # Create generation config
+        generation_config = genai.GenerationConfig(
+            temperature=temperature,
+            max_output_tokens=max_output_tokens,
+        )
+
+        # Create and return model
+        model_instance = GenerativeModel(
+            model_name=model,
+            generation_config=generation_config,
+        )
+
+        return model_instance
 
     @staticmethod
-    def create_default_client():
+    def create_default_client() -> GenerativeModel:
         """Create default client using config settings.
 
         Returns:
-            Default configured ModelClient
+            Default configured GenerativeModel
         """
         from ..common.config import Config
 
-        config = Config()
         return AIClientFactory.create_gemini_client(
-            api_key=config.GEMINI_API_KEY,
-            model=config.MODEL_NAME,
-            temperature=config.TEMPERATURE,
+            api_key=Config.GEMINI_API_KEY,
+            model=Config.MODEL_NAME,
+            temperature=Config.TEMPERATURE,
+            max_output_tokens=Config.MAX_TOKENS,
         )

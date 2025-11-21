@@ -6,12 +6,14 @@ MUST inherit from google.adk.agents.Agent.
 
 from typing import Dict, List
 import yaml
+from google.generativeai import GenerativeModel
 
 # from google.adk.agents import Agent  # Uncomment when ADK is installed
 
 from ..domain.state import SessionState, WorkflowStatus
-from ..common.config import Config
 from ..utils.logger import AgentLogger
+from ..ai import AIClientFactory, load_prompt
+from ..common.config import Config
 
 
 class SafetyGuardAgent:  # TODO: Inherit from Agent when ADK is installed
@@ -29,10 +31,16 @@ class SafetyGuardAgent:  # TODO: Inherit from Agent when ADK is installed
     Safety rules loaded from: resources/policies/safety_rules.yaml
     """
 
-    def __init__(self):
-        """Initialize SafetyGuardAgent."""
-        self.config = Config()
+    def __init__(self, model: GenerativeModel = None):
+        """Initialize SafetyGuardAgent.
+
+        Args:
+            model: Optional GenerativeModel instance. If None, creates default client.
+        """
         self.logger = AgentLogger("SafetyGuardAgent")
+
+        # Use centralized AI client
+        self.model = model or AIClientFactory.create_default_client()
 
         # Load system prompt from file (NOT hardcoded)
         self.system_prompt = self._load_prompt()
@@ -40,7 +48,7 @@ class SafetyGuardAgent:  # TODO: Inherit from Agent when ADK is installed
         # Load safety rules from YAML (NOT hardcoded)
         self.safety_rules = self._load_safety_rules()
 
-        self.logger.info("SafetyGuardAgent initialized")
+        self.logger.info("SafetyGuardAgent initialized with Gemini model")
 
     def _load_prompt(self) -> str:
         """Load system prompt from resources/prompts/guard_prompt.txt.
@@ -48,7 +56,7 @@ class SafetyGuardAgent:  # TODO: Inherit from Agent when ADK is installed
         Returns:
             System prompt text
         """
-        return Config.get_prompt(Config.GUARD_PROMPT_PATH)
+        return load_prompt("guard_prompt")
 
     def _load_safety_rules(self) -> Dict:
         """Load safety rules from resources/policies/safety_rules.yaml.

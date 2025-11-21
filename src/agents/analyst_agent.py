@@ -5,12 +5,13 @@ MUST inherit from google.adk.agents.Agent.
 """
 
 from typing import Dict, List
+from google.generativeai import GenerativeModel
 
 # from google.adk.agents import Agent  # Uncomment when ADK is installed
 
 from ..domain.state import SessionState, WorkflowStatus
-from ..common.config import Config
 from ..utils.logger import AgentLogger
+from ..ai import AIClientFactory, load_prompt
 
 
 class ReportAnalystAgent:  # TODO: Inherit from Agent when ADK is installed
@@ -26,15 +27,21 @@ class ReportAnalystAgent:  # TODO: Inherit from Agent when ADK is installed
     System prompt loaded from: resources/prompts/analyst_prompt.txt
     """
 
-    def __init__(self):
-        """Initialize ReportAnalystAgent."""
-        self.config = Config()
+    def __init__(self, model: GenerativeModel = None):
+        """Initialize ReportAnalystAgent.
+
+        Args:
+            model: Optional GenerativeModel instance. If None, creates default client.
+        """
         self.logger = AgentLogger("ReportAnalystAgent")
+
+        # Use centralized AI client
+        self.model = model or AIClientFactory.create_default_client()
 
         # Load system prompt from file (NOT hardcoded)
         self.system_prompt = self._load_prompt()
 
-        self.logger.info("ReportAnalystAgent initialized")
+        self.logger.info("ReportAnalystAgent initialized with Gemini model")
 
     def _load_prompt(self) -> str:
         """Load system prompt from resources/prompts/analyst_prompt.txt.
@@ -42,7 +49,7 @@ class ReportAnalystAgent:  # TODO: Inherit from Agent when ADK is installed
         Returns:
             System prompt text
         """
-        return Config.get_prompt(Config.ANALYST_PROMPT_PATH)
+        return load_prompt("analyst_prompt")
 
     def execute(self, state: SessionState, health_report: Dict) -> SessionState:
         """Parse health report and update state.

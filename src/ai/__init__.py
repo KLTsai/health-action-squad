@@ -3,9 +3,14 @@
 Contains LLM client abstractions, tools, and prompt management.
 """
 
-# Imports will be added as components are implemented
-# from .client import AIClientFactory
-# from .prompts import load_prompt
-# from .tools import MedicalKnowledgeSearchTool
+from .client import AIClientFactory
+from .prompts import load_prompt, get_prompt_path, list_available_prompts
+from .tools import MedicalKnowledgeSearchTool
 
-__all__ = []
+__all__ = [
+    "AIClientFactory",
+    "load_prompt",
+    "get_prompt_path",
+    "list_available_prompts",
+    "MedicalKnowledgeSearchTool",
+]
