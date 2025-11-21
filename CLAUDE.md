@@ -1,7 +1,7 @@
 # CLAUDE.md - Health Action Squad (Concierge Agent)
 
-**Documentation Version:** 3.0 (ADK Production Edition)
-**Last Updated:** 2025-11-20
+**Documentation Version:** 3.1 (ADK Production - Fully Implemented)
+**Last Updated:** 2025-11-21
 **Project:** Health Action Squad (Kaggle Concierge Track)
 **Tech Stack:** Python, Google ADK (Agent Development Kit), Gemini Pro, Event-Driven Architecture
 **Description:** Multi-agent system interprets health reports and generates personalized safe plans using a strict planner-guard loop. All code must follow ADK patterns and safety protocols.
@@ -191,76 +191,150 @@ prompts = list_available_prompts()  # ['analyst_prompt', 'planner_prompt', 'guar
 
 ---
 
-## 🤖 Agent Responsibilities
+## 🤖 ADK Agent Implementation (Factory Pattern)
 
-### ReportAnalystAgent
-- **Purpose**: Parse health reports into metrics/risk tags
-- **Input**: Raw health report (from SessionState)
-- **Output**: Updated SessionState with health_metrics and risk_tags
-- **LLM Client**: Uses AIClientFactory.create_default_client() (Gemini Pro)
+All agents use **factory pattern** returning `google.adk.agents.LlmAgent` instances.
+
+### ReportAnalystAgent (src/agents/analyst_agent.py)
+
+**Factory Method:**
+```python
+from src.agents.analyst_agent import ReportAnalystAgent
+
+# Create ADK LlmAgent
+analyst = ReportAnalystAgent.create_agent(model_name="gemini-pro")
+```
+
+**Specifications:**
+- **Purpose**: Parse health reports into structured metrics and risk tags
+- **Output Key**: `health_analysis` (used by downstream agents)
+- **Prompt Source**: `resources/prompts/analyst_prompt.txt` (loaded via `load_prompt()`)
+- **Model**: Gemini Pro (configurable)
 - **Constraints**:
   - NO external queries
-  - MUST conform to SessionState schema
-  - MUST use prompt from resources/prompts/analyst_prompt.txt
-  - Uses centralized AI client from ai/ module
+  - MUST return JSON with `health_metrics` and `risk_tags`
+  - All prompts externalized, no hardcoding
 
-### LifestylePlannerAgent
+### LifestylePlannerAgent (src/agents/planner_agent.py)
+
+**Factory Method:**
+```python
+from src.agents.planner_agent import LifestylePlannerAgent
+
+# Create ADK LlmAgent with state injection
+planner = LifestylePlannerAgent.create_agent(model_name="gemini-pro")
+```
+
+**Specifications:**
 - **Purpose**: Generate personalized Markdown lifestyle plan
-- **Input**: health_metrics, risk_tags, user_profile (from SessionState)
-- **Output**: Updated SessionState with current_plan
-- **LLM Client**: Uses AIClientFactory.create_default_client() (Gemini Pro)
+- **Output Key**: `current_plan` (consumed by SafetyGuard)
+- **Prompt Source**: `resources/prompts/planner_prompt.txt`
+- **State Injection**: Uses placeholders `{health_analysis}`, `{user_profile}`, `{validation_result}`
+- **Model**: Gemini Pro (configurable)
 - **Constraints**:
-  - MUST use ADK Tool for knowledge search (MedicalKnowledgeSearchTool)
   - Plan length ≤ 1500 words
-  - Medical recommendations MUST cite sources
-  - MUST incorporate Guard feedback in retry loop
-  - MUST use prompt from resources/prompts/planner_prompt.txt
-  - Uses centralized AI client from ai/ module
+  - MUST incorporate Guard feedback in retry iterations
+  - Medical recommendations should cite sources
+  - ADK automatically injects state from previous agents
 
-### SafetyGuardAgent
-- **Purpose**: Validate current_plan against safety policies
-- **Input**: current_plan, risk_tags (from SessionState)
-- **Output**: Updated SessionState with feedback_history and decision
-- **LLM Client**: Uses AIClientFactory.create_default_client() (Gemini Pro)
+### SafetyGuardAgent (src/agents/guard_agent.py)
+
+**Factory Method:**
+```python
+from src.agents.guard_agent import SafetyGuardAgent
+
+# Create ADK LlmAgent with exit_loop tool
+guard = SafetyGuardAgent.create_agent(model_name="gemini-pro")
+```
+
+**Specifications:**
+- **Purpose**: Validate plans against safety policies and terminate loop on approval
+- **Output Key**: `validation_result` (fed back to Planner)
+- **Prompt Source**: `resources/prompts/guard_prompt.txt`
+- **Safety Rules**: Loads `resources/policies/safety_rules.yaml` into prompt
+- **Tools**: `[FunctionTool(exit_loop)]` - ADK's built-in loop termination
+- **Model**: Gemini Pro (configurable)
 - **Constraints**:
-  - MUST use resources/policies/safety_rules.yaml
-  - MUST output: decision (APPROVE/REJECT), feedback, violations
-  - On REJECT: trigger Planner retry (max 3)
-  - MUST use prompt from resources/prompts/guard_prompt.txt
-  - Uses centralized AI client from ai/ module
+  - MUST call `exit_loop` tool when plan is APPROVED
+  - MUST provide structured feedback on REJECT
+  - Decision: APPROVE or REJECT
+  - On REJECT: LoopAgent retries (max 3 iterations)
 
 ---
 
-## 🔄 Orchestrator Workflow
+## 🔄 ADK Orchestrator Workflow (src/workflow/orchestrator.py)
+
+**Architecture**: Declarative workflow using `SequentialAgent` and `LoopAgent`
+
+### Workflow Structure
 
 ```python
-# Simplified workflow pattern
-while state.retry_count < MAX_RETRIES:
-    # Planner generates plan
-    plan = planner.execute(state)
-    state = update_state(state, current_plan=plan)
+from src.workflow.orchestrator import Orchestrator
 
-    # Guard validates plan
-    result = guard.execute(state)
+# Initialize orchestrator with ADK workflow
+orchestrator = Orchestrator(model_name="gemini-pro")
 
-    if result.decision == "APPROVE":
-        return state.final_output
-
-    # Update state with feedback for retry
-    state = update_state(
-        state,
-        feedback_history=state.feedback_history + [result.feedback],
-        retry_count=state.retry_count + 1
-    )
-
-# Circuit breaker triggered
-fallback = generate_fallback(state.risk_tags)
+# Workflow composition:
+# HealthActionSquad (SequentialAgent)
+# ├── ReportAnalyst (LlmAgent) → health_analysis
+# └── PlanningLoop (LoopAgent, max 3 iterations)
+#     ├── LifestylePlanner (LlmAgent) → current_plan
+#     └── SafetyGuard (LlmAgent) → validation_result [calls exit_loop on approval]
 ```
 
-**Key Points:**
-- Max 3 retry attempts
-- State is immutable - always create new state
-- Fallback generates safe generic advice on failure
+### Execution Pattern
+
+```python
+import asyncio
+
+# Execute ADK workflow
+result = await orchestrator.execute(
+    health_report=health_report_dict,
+    user_profile=user_profile_dict
+)
+
+# ADK automatically manages:
+# 1. State flow through output_keys
+# 2. Planner-Guard retry loop (max 3 iterations)
+# 3. Loop termination via exit_loop tool
+# 4. Fallback on errors
+```
+
+**Key ADK Features:**
+- **Declarative Composition**: Workflow defined via agent hierarchy, not imperative code
+- **Automatic State Management**: ADK injects state via `{placeholders}` in prompts
+- **Circuit Breaker**: LoopAgent `max_iterations=3` enforces retry limit
+- **Tool-based Termination**: Guard calls `exit_loop()` to break loop on approval
+- **Async Execution**: Uses `await workflow.run()` for async LLM calls
+- **Fallback Strategy**: Orchestrator catches exceptions and generates safe generic advice
+
+### State Flow Diagram
+
+```
+Initial State
+  └─> ReportAnalyst
+        └─> output: health_analysis
+              └─> PlanningLoop (LoopAgent)
+                    ├─> Iteration 1:
+                    │     ├─> LifestylePlanner (uses {health_analysis}, {user_profile})
+                    │     │     └─> output: current_plan
+                    │     └─> SafetyGuard (uses {current_plan})
+                    │           └─> output: validation_result
+                    │                 ├─> APPROVE → call exit_loop → END
+                    │                 └─> REJECT → retry (if < max_iterations)
+                    │
+                    ├─> Iteration 2 (if REJECT):
+                    │     └─> LifestylePlanner (uses {health_analysis}, {user_profile}, {validation_result})
+                    │           └─> incorporates feedback
+                    └─> Iteration 3 (if still REJECT):
+                          └─> Final attempt, then fallback if still failing
+```
+
+**Implementation Notes:**
+- No manual state management - ADK handles state injection
+- No explicit while loops - LoopAgent manages iterations
+- No manual retry counters - LoopAgent tracks iterations automatically
+- Prompts use `{key}` placeholders for automatic state injection
 
 ---
 
