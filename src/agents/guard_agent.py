@@ -1,23 +1,19 @@
 """SafetyGuardAgent - Plan validation and safety checking agent.
 
-Validates lifestyle plans against safety policies.
-MUST inherit from google.adk.agents.Agent.
+Validates lifestyle plans against safety policies using Google ADK.
 """
 
-from typing import Dict, List
 import yaml
-from google.generativeai import GenerativeModel
+from google.adk.agents import LlmAgent
+from google.adk.tools.exit_loop_tool import exit_loop
+from google.adk.tools import FunctionTool
 
-# from google.adk.agents import Agent  # Uncomment when ADK is installed
-
-from ..domain.state import SessionState, WorkflowStatus
-from ..utils.logger import AgentLogger
-from ..ai import AIClientFactory, load_prompt
+from ..ai import load_prompt
 from ..common.config import Config
 
 
-class SafetyGuardAgent:  # TODO: Inherit from Agent when ADK is installed
-    """SafetyGuardAgent validates plans against safety policies.
+class SafetyGuardAgent:
+    """Factory for creating SafetyGuard ADK agent.
 
     Responsibilities:
     - Validate current_plan against safety_rules.yaml
@@ -25,40 +21,86 @@ class SafetyGuardAgent:  # TODO: Inherit from Agent when ADK is installed
     - Detect potentially harmful recommendations
     - Return: decision (APPROVE/REJECT), feedback, violations
     - On REJECT: provide specific feedback for Planner retry
-    - Max 3 retry attempts enforced by Orchestrator
+    - On APPROVE: call approve_and_exit tool to terminate loop
 
     System prompt loaded from: resources/prompts/guard_prompt.txt
     Safety rules loaded from: resources/policies/safety_rules.yaml
     """
 
-    def __init__(self, model: GenerativeModel = None):
-        """Initialize SafetyGuardAgent.
+    @staticmethod
+    def create_agent(model_name: str = "gemini-pro") -> LlmAgent:
+        """Create ADK LlmAgent for safety validation.
 
         Args:
-            model: Optional GenerativeModel instance. If None, creates default client.
-        """
-        self.logger = AgentLogger("SafetyGuardAgent")
-
-        # Use centralized AI client
-        self.model = model or AIClientFactory.create_default_client()
-
-        # Load system prompt from file (NOT hardcoded)
-        self.system_prompt = self._load_prompt()
-
-        # Load safety rules from YAML (NOT hardcoded)
-        self.safety_rules = self._load_safety_rules()
-
-        self.logger.info("SafetyGuardAgent initialized with Gemini model")
-
-    def _load_prompt(self) -> str:
-        """Load system prompt from resources/prompts/guard_prompt.txt.
+            model_name: Gemini model name (default: gemini-pro)
 
         Returns:
-            System prompt text
+            Configured LlmAgent instance with termination tool
         """
-        return load_prompt("guard_prompt")
+        # Load system prompt from external file
+        system_prompt = load_prompt("guard_prompt")
 
-    def _load_safety_rules(self) -> Dict:
+        # Load safety rules from YAML
+        safety_rules = SafetyGuardAgent._load_safety_rules()
+
+        # Add validation instructions with tool usage
+        enhanced_prompt = f"""{system_prompt}
+
+# Safety Rules (from safety_rules.yaml)
+```yaml
+{yaml.dump(safety_rules, default_flow_style=False)}
+```
+
+# Context
+You will receive the generated lifestyle plan.
+
+## Current Plan
+{{current_plan}}
+
+## Risk Tags
+{{health_analysis}}
+
+# Validation Instructions
+1. Check plan against all safety rules
+2. Verify medical claims are properly sourced
+3. Check for appropriate disclaimers
+4. Verify plan length is under 1500 words
+5. Ensure risk-specific recommendations are present
+
+# Decision Making
+If the plan passes all checks:
+- Decision: APPROVE
+- **IMPORTANT**: Call the exit_loop tool to signal completion and terminate the retry loop
+- Provide brief positive feedback
+
+If the plan has violations:
+- Decision: REJECT
+- List specific violations
+- Provide actionable feedback for improvement
+- Do NOT call exit_loop
+
+# Output Format
+Always return JSON:
+{{
+    "decision": "APPROVE" or "REJECT",
+    "feedback": ["list of feedback items"],
+    "violations": ["list of violations if any"]
+}}
+
+Then if APPROVED, call exit_loop tool to terminate the loop.
+"""
+
+        return LlmAgent(
+            name="SafetyGuard",
+            model=model_name,
+            instruction=enhanced_prompt,
+            output_key="validation_result",
+            tools=[FunctionTool(exit_loop)],  # Use ADK's built-in exit_loop tool
+            description="Validates plans against safety policies and terminates loop on approval"
+        )
+
+    @staticmethod
+    def _load_safety_rules() -> dict:
         """Load safety rules from resources/policies/safety_rules.yaml.
 
         Returns:
@@ -74,143 +116,3 @@ class SafetyGuardAgent:  # TODO: Inherit from Agent when ADK is installed
 
         with Config.SAFETY_RULES_PATH.open("r", encoding="utf-8") as f:
             return yaml.safe_load(f)
-
-    def execute(self, state: SessionState) -> SessionState:
-        """Validate lifestyle plan against safety policies.
-
-        Args:
-            state: Current session state with current_plan and risk_tags
-
-        Returns:
-            Updated SessionState with validation decision and feedback
-
-        Raises:
-            ValueError: If current_plan is empty
-        """
-        self.logger.set_session(state.session_id)
-        self.logger.set_iteration(state.retry_count + 1)
-
-        self.logger.info(
-            "Starting plan validation",
-            iteration=state.retry_count + 1,
-            plan_length=len(state.current_plan),
-        )
-
-        # Validate input
-        if not state.current_plan:
-            raise ValueError("Cannot validate empty plan")
-
-        # TODO: Implement ADK agent execution
-        # 1. Use ADK ModelClient to call Gemini
-        # 2. Pass system_prompt, current_plan, risk_tags, and safety_rules
-        # 3. Get validation decision and detailed feedback
-
-        # Placeholder implementation
-        validation_result = self._validate_plan_placeholder(state)
-
-        # Update state based on decision
-        if validation_result["decision"] == "APPROVE":
-            updated_state = state.update(status=WorkflowStatus.APPROVED)
-
-            self.logger.info("Plan approved", iteration=state.retry_count + 1)
-        else:
-            # Add feedback to history
-            feedback_entry = {
-                "iteration": state.retry_count + 1,
-                "decision": validation_result["decision"],
-                "feedback": validation_result["feedback"],
-                "violations": validation_result["violations"],
-            }
-
-            feedback_history = state.feedback_history + [feedback_entry]
-
-            updated_state = state.update(
-                feedback_history=feedback_history,
-                status=WorkflowStatus.PLANNING,  # Back to planning
-            )
-
-            self.logger.warning(
-                "Plan rejected",
-                iteration=state.retry_count + 1,
-                violations=validation_result["violations"],
-            )
-
-        self.logger.trace_state_transition(
-            from_state=state.status.value,
-            to_state=updated_state.status.value,
-            decision=validation_result["decision"],
-        )
-
-        return updated_state
-
-    def _validate_plan_placeholder(self, state: SessionState) -> Dict:
-        """Placeholder for plan validation.
-
-        TODO: Replace with actual ADK agent implementation.
-
-        Args:
-            state: Current session state
-
-        Returns:
-            Validation result dictionary with decision, feedback, violations
-        """
-        plan = state.current_plan
-        risk_tags = state.risk_tags
-
-        # Perform basic rule-based validation
-        violations = []
-        feedback = []
-
-        # Check 1: Plan length
-        if len(plan) > Config.PLAN_MAX_LENGTH:
-            violations.append("plan_too_long")
-            feedback.append(
-                f"Plan exceeds maximum length of {Config.PLAN_MAX_LENGTH} characters"
-            )
-
-        # Check 2: Disclaimer present
-        if "disclaimer" not in plan.lower() and "consult" not in plan.lower():
-            violations.append("missing_disclaimer")
-            feedback.append(
-                "Plan must include medical disclaimer and recommendation to consult healthcare provider"
-            )
-
-        # Check 3: Medical claims with sources
-        medical_keywords = ["treatment", "cure", "medication", "diagnosis"]
-        has_medical_claims = any(
-            keyword in plan.lower() for keyword in medical_keywords
-        )
-        has_sources = "source" in plan.lower() or "reference" in plan.lower()
-
-        if has_medical_claims and not has_sources:
-            violations.append("unsourced_medical_claims")
-            feedback.append("Medical claims must be supported with credible sources")
-
-        # Check 4: Risk-specific validation
-        if "high_blood_pressure" in risk_tags:
-            if "reduce sodium" not in plan.lower() and "salt" not in plan.lower():
-                violations.append("missing_risk_mitigation")
-                feedback.append(
-                    "Plan should address sodium reduction for high blood pressure"
-                )
-
-        # Decide based on violations
-        if not violations:
-            decision = "APPROVE"
-            feedback = ["Plan meets all safety requirements"]
-        else:
-            decision = "REJECT"
-
-        return {
-            "decision": decision,
-            "feedback": feedback,
-            "violations": violations,
-        }
-
-    def get_safety_rules(self) -> Dict:
-        """Get loaded safety rules.
-
-        Returns:
-            Safety rules dictionary
-        """
-        return self.safety_rules
