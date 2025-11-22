@@ -204,7 +204,7 @@ client = AIClientFactory.create_default_client()
 # Or create custom client
 client = AIClientFactory.create_gemini_client(
     api_key="your_key",
-    model="gemini-pro",
+    model="gemini-2.5-flash",
     temperature=0.7,
     max_output_tokens=2048
 )
@@ -242,7 +242,7 @@ All agents use **factory pattern** returning `google.adk.agents.LlmAgent` instan
 from src.agents.analyst_agent import ReportAnalystAgent
 
 # Create ADK LlmAgent
-analyst = ReportAnalystAgent.create_agent(model_name="gemini-pro")
+analyst = ReportAnalystAgent.create_agent(model_name="gemini-2.5-flash")
 ```
 
 **Specifications:**
@@ -262,7 +262,7 @@ analyst = ReportAnalystAgent.create_agent(model_name="gemini-pro")
 from src.agents.planner_agent import LifestylePlannerAgent
 
 # Create ADK LlmAgent with state injection
-planner = LifestylePlannerAgent.create_agent(model_name="gemini-pro")
+planner = LifestylePlannerAgent.create_agent(model_name="gemini-2.5-flash")
 ```
 
 **Specifications:**
@@ -284,7 +284,7 @@ planner = LifestylePlannerAgent.create_agent(model_name="gemini-pro")
 from src.agents.guard_agent import SafetyGuardAgent
 
 # Create ADK LlmAgent with exit_loop tool
-guard = SafetyGuardAgent.create_agent(model_name="gemini-pro")
+guard = SafetyGuardAgent.create_agent(model_name="gemini-2.5-flash")
 ```
 
 **Specifications:**
@@ -312,7 +312,7 @@ guard = SafetyGuardAgent.create_agent(model_name="gemini-pro")
 from src.workflow.orchestrator import Orchestrator
 
 # Initialize orchestrator with ADK workflow
-orchestrator = Orchestrator(model_name="gemini-pro")
+orchestrator = Orchestrator(model_name="gemini-2.5-flash")
 
 # Workflow composition:
 # HealthActionSquad (SequentialAgent)

@@ -77,9 +77,9 @@ from src.agents.planner_agent import LifestylePlannerAgent
 from src.agents.guard_agent import SafetyGuardAgent
 
 # Create ADK agents
-analyst = ReportAnalystAgent.create_agent(model_name="gemini-pro")
-planner = LifestylePlannerAgent.create_agent(model_name="gemini-pro")
-guard = SafetyGuardAgent.create_agent(model_name="gemini-pro")
+analyst = ReportAnalystAgent.create_agent(model_name="gemini-2.5-flash")
+planner = LifestylePlannerAgent.create_agent(model_name="gemini-2.5-flash")
+guard = SafetyGuardAgent.create_agent(model_name="gemini-2.5-flash")
 ```
 
 ### Key ADK Features
