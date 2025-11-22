@@ -63,52 +63,12 @@ class SafetyGuardAgent:
             tools=["exit_loop"]
         )
 
-        # Add validation instructions with tool usage
-        enhanced_prompt = f"""{system_prompt}
-
-# Safety Rules (from safety_rules.yaml)
-```yaml
-{yaml.dump(safety_rules, default_flow_style=False)}
-```
-
-# Context
-You will receive the generated lifestyle plan.
-
-## Current Plan
-{{current_plan}}
-
-## Risk Tags
-{{health_analysis}}
-
-# Validation Instructions
-1. Check plan against all safety rules
-2. Verify medical claims are properly sourced
-3. Check for appropriate disclaimers
-4. Verify plan length is under 1500 words
-5. Ensure risk-specific recommendations are present
-
-# Decision Making
-If the plan passes all checks:
-- Decision: APPROVE
-- **IMPORTANT**: Call the exit_loop tool to signal completion and terminate the retry loop
-- Provide brief positive feedback
-
-If the plan has violations:
-- Decision: REJECT
-- List specific violations
-- Provide actionable feedback for improvement
-- Do NOT call exit_loop
-
-# Output Format
-Always return JSON:
-{{
-    "decision": "APPROVE" or "REJECT",
-    "feedback": ["list of feedback items"],
-    "violations": ["list of violations if any"]
-}}
-
-Then if APPROVED, call exit_loop tool to terminate the loop.
-"""
+        # Inject dynamic safety rules into the loaded prompt
+        safety_rules_yaml = yaml.dump(safety_rules, default_flow_style=False)
+        enhanced_prompt = system_prompt.replace(
+            "{safety_rules_yaml}",
+            f"```yaml\n{safety_rules_yaml}```"
+        )
 
         return LlmAgent(
             name="SafetyGuard",
