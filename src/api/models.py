@@ -213,7 +213,7 @@ class HealthCheckResponse(BaseModel):
     )
 
     model: str = Field(
-        default="gemini-pro", description="Model name being used"
+        default="gemini-2.5-flash", description="Model name being used"
     )
 
     uptime_seconds: Optional[float] = Field(
@@ -226,7 +226,7 @@ class HealthCheckResponse(BaseModel):
                 "status": "healthy",
                 "version": "1.0.0",
                 "timestamp": "2025-11-21T10:30:00.000000",
-                "model": "gemini-pro",
+                "model": "gemini-2.5-flash",
                 "uptime_seconds": 3600.5,
             }
         }

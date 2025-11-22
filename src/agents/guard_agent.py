@@ -44,7 +44,7 @@ class SafetyGuardAgent:
         """Create ADK LlmAgent for safety validation.
 
         Args:
-            model_name: Gemini model name (default: gemini-pro)
+            model_name: Gemini model name (default: gemini-2.5-flash)
 
         Returns:
             Configured LlmAgent instance with termination tool

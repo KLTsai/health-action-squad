@@ -12,26 +12,26 @@ class TestSafetyGuardAgent:
 
     def test_create_agent_returns_llm_agent(self):
         """Test that create_agent returns an LlmAgent instance."""
-        agent = SafetyGuardAgent.create_agent(model_name="gemini-pro")
+        agent = SafetyGuardAgent.create_agent(model_name="gemini-2.5-flash")
 
         assert isinstance(agent, LlmAgent)
         assert agent is not None
 
     def test_agent_has_correct_name(self):
         """Test that agent has correct name."""
-        agent = SafetyGuardAgent.create_agent(model_name="gemini-pro")
+        agent = SafetyGuardAgent.create_agent(model_name="gemini-2.5-flash")
 
         assert agent.name == "SafetyGuard"
 
     def test_agent_has_correct_output_key(self):
         """Test that agent has correct output_key."""
-        agent = SafetyGuardAgent.create_agent(model_name="gemini-pro")
+        agent = SafetyGuardAgent.create_agent(model_name="gemini-2.5-flash")
 
         assert agent.output_key == "validation_result"
 
     def test_agent_has_exit_loop_tool(self):
         """Test that agent has exit_loop tool for loop termination."""
-        agent = SafetyGuardAgent.create_agent(model_name="gemini-pro")
+        agent = SafetyGuardAgent.create_agent(model_name="gemini-2.5-flash")
 
         assert hasattr(agent, 'tools')
         assert agent.tools is not None
@@ -43,14 +43,14 @@ class TestSafetyGuardAgent:
 
     def test_agent_instruction_mentions_exit_loop(self):
         """Test that agent instruction mentions exit_loop tool usage."""
-        agent = SafetyGuardAgent.create_agent(model_name="gemini-pro")
+        agent = SafetyGuardAgent.create_agent(model_name="gemini-2.5-flash")
 
         instruction_lower = agent.instruction.lower()
         assert "exit_loop" in instruction_lower or "exit" in instruction_lower
 
     def test_agent_instruction_contains_safety_rules(self):
         """Test that agent instruction contains safety rules from YAML."""
-        agent = SafetyGuardAgent.create_agent(model_name="gemini-pro")
+        agent = SafetyGuardAgent.create_agent(model_name="gemini-2.5-flash")
 
         instruction_lower = agent.instruction.lower()
         # Should contain some safety-related keywords
@@ -69,7 +69,7 @@ class TestSafetyGuardAgent:
 
     def test_agent_instruction_has_decision_format(self):
         """Test that agent instruction specifies decision format."""
-        agent = SafetyGuardAgent.create_agent(model_name="gemini-pro")
+        agent = SafetyGuardAgent.create_agent(model_name="gemini-2.5-flash")
 
         instruction_lower = agent.instruction.lower()
         assert "approve" in instruction_lower

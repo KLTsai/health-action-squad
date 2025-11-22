@@ -13,14 +13,14 @@ class TestOrchestrator:
 
     def test_orchestrator_initialization(self):
         """Test that Orchestrator initializes correctly."""
-        orchestrator = Orchestrator(model_name="gemini-pro")
+        orchestrator = Orchestrator(model_name="gemini-2.5-flash")
 
         assert orchestrator is not None
-        assert orchestrator.model_name == "gemini-pro"
+        assert orchestrator.model_name == "gemini-2.5-flash"
 
     def test_orchestrator_creates_all_agents(self):
         """Test that Orchestrator creates all three agents."""
-        orchestrator = Orchestrator(model_name="gemini-pro")
+        orchestrator = Orchestrator(model_name="gemini-2.5-flash")
 
         assert orchestrator.analyst_agent is not None
         assert orchestrator.planner_agent is not None
@@ -33,14 +33,14 @@ class TestOrchestrator:
 
     def test_orchestrator_creates_planning_loop(self):
         """Test that Orchestrator creates LoopAgent for Planner-Guard loop."""
-        orchestrator = Orchestrator(model_name="gemini-pro")
+        orchestrator = Orchestrator(model_name="gemini-2.5-flash")
 
         assert orchestrator.planning_loop is not None
         assert isinstance(orchestrator.planning_loop, LoopAgent)
 
     def test_planning_loop_has_correct_max_iterations(self):
         """Test that planning loop has max_iterations set to MAX_RETRIES."""
-        orchestrator = Orchestrator(model_name="gemini-pro")
+        orchestrator = Orchestrator(model_name="gemini-2.5-flash")
 
         # LoopAgent should have max_iterations attribute
         assert hasattr(orchestrator.planning_loop, 'max_iterations')
@@ -48,14 +48,14 @@ class TestOrchestrator:
 
     def test_orchestrator_creates_main_workflow(self):
         """Test that Orchestrator creates SequentialAgent workflow."""
-        orchestrator = Orchestrator(model_name="gemini-pro")
+        orchestrator = Orchestrator(model_name="gemini-2.5-flash")
 
         assert orchestrator.workflow is not None
         assert isinstance(orchestrator.workflow, SequentialAgent)
 
     def test_workflow_structure(self):
         """Test that workflow has correct structure (Analyst → PlanningLoop)."""
-        orchestrator = Orchestrator(model_name="gemini-pro")
+        orchestrator = Orchestrator(model_name="gemini-2.5-flash")
 
         # Workflow should have sub_agents
         assert hasattr(orchestrator.workflow, 'sub_agents')
@@ -68,7 +68,7 @@ class TestOrchestrator:
 
     def test_execute_is_async(self):
         """Test that execute method is async."""
-        orchestrator = Orchestrator(model_name="gemini-pro")
+        orchestrator = Orchestrator(model_name="gemini-2.5-flash")
 
         import inspect
         assert inspect.iscoroutinefunction(orchestrator.execute)

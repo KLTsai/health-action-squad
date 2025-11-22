@@ -18,7 +18,7 @@ class AIClientFactory:
     @staticmethod
     def create_gemini_client(
         api_key: Optional[str] = None,
-        model: str = "gemini-pro",
+        model: str = "gemini-2.5-flash",
         temperature: float = 0.7,
         max_output_tokens: int = 2048,
     ) -> GenerativeModel:
@@ -26,7 +26,7 @@ class AIClientFactory:
 
         Args:
             api_key: Gemini API key (falls back to env var GEMINI_API_KEY)
-            model: Model name (default: gemini-pro)
+            model: Model name (default: gemini-2.5-flash)
             temperature: Sampling temperature (default: 0.7)
             max_output_tokens: Maximum tokens in response (default: 2048)
 

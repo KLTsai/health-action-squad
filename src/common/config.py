@@ -36,7 +36,7 @@ class Config:
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
 
     # Model configuration
-    MODEL_NAME: str = os.getenv("MODEL_NAME", "gemini-pro")
+    MODEL_NAME: str = os.getenv("MODEL_NAME", "gemini-2.5-flash")
     TEMPERATURE: float = float(os.getenv("TEMPERATURE", "0.7"))
     MAX_TOKENS: int = int(os.getenv("MAX_TOKENS", "2048"))
 
