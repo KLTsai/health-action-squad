@@ -126,27 +126,66 @@ health-action-squad/
 
 ---
 
-## 📊 SessionState Standard
+## 📊 ADK State Management
 
-All context MUST flow through this immutable state object:
+**ADK automatically manages state through agent `output_keys` - no manual SessionState object needed in workflow.**
+
+### How ADK State Flow Works
+
+```python
+# ADK Workflow (orchestrator.py)
+initial_state = {
+    "session_id": session_id,
+    "user_profile": user_profile,
+    "health_report": health_report
+}
+
+# ADK SequentialAgent + LoopAgent handle state automatically:
+# 1. ReportAnalyst outputs to "health_analysis" → injected into Planner prompt
+# 2. LifestylePlanner outputs to "current_plan" → injected into Guard prompt
+# 3. SafetyGuard outputs to "validation_result" → fed back to Planner on retry
+```
+
+### State Injection via Placeholders
+
+Agents use `{placeholder}` syntax in prompts for automatic state injection:
+
+```python
+# planner_prompt.txt
+"""
+## Health Analysis (from ReportAnalyst)
+{health_analysis}
+
+## User Profile
+{user_profile}
+
+## Previous Feedback (if this is a retry)
+{validation_result}
+"""
+```
+
+**ADK automatically injects these values** from previous agent outputs.
+
+### SessionState Dataclass (Optional)
+
+The `src/domain/state.py` defines a `SessionState` dataclass for **type-safe response formatting** (not workflow execution):
 
 ```python
 @dataclass(frozen=True)
 class SessionState:
-    user_profile: dict              # Fixed user data
-    health_metrics: dict            # Parsed health report results
-    risk_tags: List[str]            # Risk flags
-    current_plan: str               # Markdown plan
-    feedback_history: List[Dict]    # Feedback from each Guard iteration
-    retry_count: int                # Planner-Guard loop counter
-    status: str                     # Workflow status (enum only)
+    user_profile: dict
+    health_metrics: dict
+    risk_tags: List[str]
+    current_plan: str
+    status: WorkflowStatus  # Enum: INIT, ANALYZING, PLANNING, APPROVED, FAILED
+    ...
 ```
 
-**Rules:**
-- MUST be immutable (frozen=True)
-- NO stateless parameter passing
-- ALL agents read/write through SessionState
-- Status MUST be enum: INIT, ANALYZING, PLANNING, REVIEWING, APPROVED, FAILED
+This is used for:
+
+- ✅ API response validation (Pydantic models)
+- ✅ Type-safe data structures
+- ❌ NOT used for agent-to-agent communication (ADK handles that)
 
 ---
 
