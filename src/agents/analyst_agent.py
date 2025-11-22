@@ -48,40 +48,10 @@ class ReportAnalystAgent:
             description="Parses health reports into structured metrics and risk tags"
         )
 
-        # Add structured output instructions
-        enhanced_prompt = f"""{system_prompt}
-
-# Input Format
-You will receive a health report as JSON.
-
-# Output Format
-You MUST return a JSON object with exactly this structure:
-{{
-    "health_metrics": {{
-        "cholesterol_total": <number>,
-        "cholesterol_ldl": <number>,
-        "cholesterol_hdl": <number>,
-        "blood_pressure_systolic": <number>,
-        "blood_pressure_diastolic": <number>,
-        "glucose": <number>,
-        "bmi": <number>
-    }},
-    "risk_tags": [<list of risk tag strings>]
-}}
-
-Risk tags should include:
-- "high_cholesterol" if total cholesterol > 200
-- "high_ldl" if LDL > 130
-- "high_blood_pressure" if systolic > 130 or diastolic > 80
-- "elevated_glucose" if glucose > 100
-- "overweight" if BMI > 25
-- "obese" if BMI > 30
-"""
-
         return LlmAgent(
             name="ReportAnalyst",
             model=model_name,
-            instruction=enhanced_prompt,
+            instruction=system_prompt,
             output_key="health_analysis",
             description="Parses health reports into structured metrics and risk tags"
         )

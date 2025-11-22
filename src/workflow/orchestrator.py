@@ -169,15 +169,48 @@ class Orchestrator:
             timestamp: Execution timestamp
 
         Returns:
-            Formatted output dictionary
+            Formatted output dictionary with all required fields
         """
+        # Extract health analysis and validation results
+        health_analysis = adk_result.get("health_analysis", {})
+        validation_result = adk_result.get("validation_result", {})
+
+        # Extract risk tags from health analysis
+        risk_tags = []
+        if isinstance(health_analysis, dict):
+            risk_tags = health_analysis.get("risk_tags", [])
+        elif isinstance(health_analysis, str):
+            # If health_analysis is JSON string, parse it
+            try:
+                import json
+                parsed = json.loads(health_analysis)
+                risk_tags = parsed.get("risk_tags", [])
+            except (json.JSONDecodeError, AttributeError):
+                risk_tags = []
+
+        # Determine status based on validation decision
+        status = "approved"
+        if isinstance(validation_result, dict):
+            decision = validation_result.get("decision", "APPROVE")
+            if decision != "APPROVE":
+                status = "rejected"
+
+        # Extract iteration count from ADK loop metadata (if available)
+        # ADK LoopAgent may provide this in metadata
+        iterations = adk_result.get("_loop_iterations", 1)
+        if iterations == 1 and isinstance(validation_result, dict):
+            # Fallback: check if there's retry information
+            iterations = adk_result.get("iterations", 1)
+
         return {
             "session_id": session_id,
             "timestamp": timestamp,
-            "status": "approved",  # If we got here, Guard approved the plan
+            "status": status,
             "plan": adk_result.get("current_plan", ""),
-            "health_analysis": adk_result.get("health_analysis", {}),
-            "validation_result": adk_result.get("validation_result", {}),
+            "risk_tags": risk_tags,
+            "iterations": iterations,
+            "health_analysis": health_analysis,
+            "validation_result": validation_result,
             "workflow_type": "adk",
             "model": self.model_name,
         }
@@ -193,7 +226,7 @@ class Orchestrator:
             error: Error message
 
         Returns:
-            Fallback response dictionary
+            Fallback response dictionary with all required fields
         """
         fallback_plan = self._create_safe_fallback_plan([])
 
@@ -202,9 +235,14 @@ class Orchestrator:
             "timestamp": timestamp,
             "status": "fallback",
             "plan": fallback_plan,
+            "risk_tags": [],
+            "iterations": 0,
+            "health_analysis": {},
+            "validation_result": {},
             "message": "Unable to generate personalized plan. Providing safe general recommendations.",
             "error": error,
             "workflow_type": "adk",
+            "model": self.model_name,
         }
 
     def _create_safe_fallback_plan(self, risk_tags: list) -> str:
