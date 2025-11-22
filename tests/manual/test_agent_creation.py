@@ -6,9 +6,10 @@ Tests that all three refactored agents can be instantiated correctly.
 import sys
 from pathlib import Path
 
-# Add src to path
-project_root = Path(__file__).parent
-sys.path.insert(0, str(project_root / "src"))
+# Add project root to path (supports both pytest and direct python execution)
+project_root = Path(__file__).parent.parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 
 from src.agents.analyst_agent import ReportAnalystAgent
 from src.agents.planner_agent import LifestylePlannerAgent

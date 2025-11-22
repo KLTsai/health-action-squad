@@ -8,9 +8,10 @@ import sys
 import json
 from pathlib import Path
 
-# Add src to path
-project_root = Path(__file__).parent
-sys.path.insert(0, str(project_root / "src"))
+# Add project root to path (supports both pytest and direct python execution)
+project_root = Path(__file__).parent.parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 
 from src.workflow.orchestrator import Orchestrator
 
