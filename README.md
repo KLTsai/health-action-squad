@@ -340,6 +340,3 @@ The project uses structured logging for comprehensive observability:
 [Add your license here]
 
 ---
-
-**Generated with Claude Code initialization workflow**
-**Project initialized: 2025-11-20**
