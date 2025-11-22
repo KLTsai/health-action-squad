@@ -93,9 +93,9 @@ guard = SafetyGuardAgent.create_agent(model_name="gemini-2.5-flash")
 ### Tech Stack
 
 - **Framework**: Google ADK (>=0.1.0, agent-based architecture)
-- **LLM**: Gemini Pro (via ADK ModelClient)
+- **LLM**: Gemini 2.5 Flash (via ADK ModelClient)
 - **API**: FastAPI
-- **State Management**: ADK automatic state injection
+- **State Management**: ADK automatic state injection via output_keys
 - **Safety**: Policy-based validation (YAML) with `exit_loop` termination
 
 ---
@@ -190,8 +190,8 @@ Before starting any task, verify:
 - [ ] Search first before creating new files (prevent duplicates)
 - [ ] Use Task agents for operations >30 seconds
 - [ ] Use TodoWrite for 3+ step tasks
-- [ ] All agents inherit from `google.adk.agents.Agent`
-- [ ] All context flows through SessionState (immutable)
+- [ ] All agents use factory pattern returning `LlmAgent` instances
+- [ ] All context flows through ADK output_keys (automatic state injection)
 - [ ] Prompts are in resources/prompts/ (not hardcoded)
 
 ### Code Quality Standards

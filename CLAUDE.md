@@ -1,9 +1,9 @@
 # CLAUDE.md - Health Action Squad (Concierge Agent)
 
-**Documentation Version:** 3.1 (ADK Production - Fully Implemented)
-**Last Updated:** 2025-11-21
+**Documentation Version:** 3.2 (ADK Production - Fully Implemented)
+**Last Updated:** 2025-11-22
 **Project:** Health Action Squad (Kaggle Concierge Track)
-**Tech Stack:** Python, Google ADK (Agent Development Kit), Gemini Pro, Event-Driven Architecture
+**Tech Stack:** Python, Google ADK (Agent Development Kit), Gemini 2.5 Flash, Event-Driven Architecture
 **Description:** Multi-agent system interprets health reports and generates personalized safe plans using a strict planner-guard loop. All code must follow ADK patterns and safety protocols.
 
 ---
@@ -22,7 +22,7 @@
 - **NEVER** mix ADK with LangGraph concepts - this project uses ADK event-driven workflow ONLY
 - **NEVER** make direct LLM API calls (e.g., requests.post) - MUST use ADK ModelClient
 - **NEVER** hardcode System Instructions in .py files - ONLY allowed in resources/prompts/
-- **NEVER** pass parameters in stateless manner - MUST use SessionState for context management
+- **NEVER** bypass ADK's automatic state injection via output_keys - state flows through placeholders
 - **NEVER** bypass Orchestrator → Planner → Guard → Loop mechanism
 - **NEVER** use print() for debugging - MUST use src/utils/logger.py
 - **NEVER** create new files in root directory → use proper module structure
@@ -32,9 +32,9 @@
 - **NEVER** add promotional messages to git commits (no "Generated with Claude Code" or "Co-Authored-By: Claude")
 
 ### 📝 MANDATORY REQUIREMENTS
-- **ADK AGENTS** - All agents MUST inherit from `google.adk.agents.Agent`, single responsibility principle
-- **SESSIONSTATE** - All workflow communication MUST use SessionState, no direct message passing
-- **TOOL WRAPPING** - All external tools MUST use ADK Tool interface
+- **ADK AGENTS** - All agents MUST use factory pattern returning `google.adk.agents.LlmAgent` instances
+- **STATE FLOW** - All workflow communication flows through ADK output_keys, prompts use `{placeholders}` for injection
+- **TOOL WRAPPING** - All external tools MUST use ADK Tool interface (FunctionTool wrapper)
 - **CIRCUIT BREAKER** - Planner → Guard → Planner retry loop MUST have max 3 attempts
 - **SAFETY POLICY** - SafetyGuardAgent MUST reference `resources/policies/safety_rules.yaml`
 - **COMMIT FREQUENTLY** - After every completed task/phase - no exceptions
@@ -68,8 +68,8 @@
 - [ ] Will this create multiple sources of truth? → If YES, redesign approach
 
 **Step 4: ADK Standards Check**
-- [ ] Does agent inherit from google.adk.agents.Agent?
-- [ ] Is SessionState being used for all context?
+- [ ] Does agent use factory pattern returning LlmAgent instances?
+- [ ] Is state flowing through ADK output_keys (not manual passing)?
 - [ ] Are prompts in resources/prompts/ not hardcoded?
 - [ ] Is safety_rules.yaml referenced (not hardcoded)?
 - [ ] Does workflow follow Orchestrator → Planner → Guard pattern?
@@ -249,7 +249,7 @@ analyst = ReportAnalystAgent.create_agent(model_name="gemini-2.5-flash")
 - **Purpose**: Parse health reports into structured metrics and risk tags
 - **Output Key**: `health_analysis` (used by downstream agents)
 - **Prompt Source**: `resources/prompts/analyst_prompt.txt` (loaded via `load_prompt()`)
-- **Model**: Gemini Pro (configurable)
+- **Model**: Gemini 2.5 Flash (configurable)
 - **Constraints**:
   - NO external queries
   - MUST return JSON with `health_metrics` and `risk_tags`
@@ -270,7 +270,7 @@ planner = LifestylePlannerAgent.create_agent(model_name="gemini-2.5-flash")
 - **Output Key**: `current_plan` (consumed by SafetyGuard)
 - **Prompt Source**: `resources/prompts/planner_prompt.txt`
 - **State Injection**: Uses placeholders `{health_analysis}`, `{user_profile}`, `{validation_result}`
-- **Model**: Gemini Pro (configurable)
+- **Model**: Gemini 2.5 Flash (configurable)
 - **Constraints**:
   - Plan length ≤ 1500 words
   - MUST incorporate Guard feedback in retry iterations
@@ -293,7 +293,7 @@ guard = SafetyGuardAgent.create_agent(model_name="gemini-2.5-flash")
 - **Prompt Source**: `resources/prompts/guard_prompt.txt`
 - **Safety Rules**: Loads `resources/policies/safety_rules.yaml` into prompt
 - **Tools**: `[FunctionTool(exit_loop)]` - ADK's built-in loop termination
-- **Model**: Gemini Pro (configurable)
+- **Model**: Gemini 2.5 Flash (configurable)
 - **Constraints**:
   - MUST call `exit_loop` tool when plan is APPROVED
   - MUST provide structured feedback on REJECT
