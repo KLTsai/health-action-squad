@@ -181,7 +181,7 @@ def orchestrator_instance() -> Orchestrator:
     Returns:
         Orchestrator instance with default model
     """
-    return Orchestrator(model_name="gemini-pro")
+    return Orchestrator(model_name="gemini-2.5-flash")
 
 
 @pytest.fixture

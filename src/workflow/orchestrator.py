@@ -45,11 +45,11 @@ class Orchestrator:
     All communication happens through ADK's state management.
     """
 
-    def __init__(self, model_name: str = "gemini-pro"):
+    def __init__(self, model_name: str = "gemini-2.5-flash"):
         """Initialize orchestrator with ADK workflow.
 
         Args:
-            model_name: Gemini model name (default: gemini-pro)
+            model_name: Gemini model name (default: gemini-2.5-flash)
         """
         self.config = Config()
         self.logger = logger

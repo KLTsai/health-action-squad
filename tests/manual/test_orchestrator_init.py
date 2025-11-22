@@ -21,7 +21,7 @@ def test_orchestrator_init():
     print("=" * 60)
 
     print("\nInitializing Orchestrator...")
-    orchestrator = Orchestrator(model_name="gemini-pro")
+    orchestrator = Orchestrator(model_name="gemini-2.5-flash")
 
     print("[OK] Orchestrator created successfully")
     print(f"   - Model: {orchestrator.model_name}")

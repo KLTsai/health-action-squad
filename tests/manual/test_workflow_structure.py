@@ -37,7 +37,7 @@ def test_workflow_structure():
 
     # Initialize orchestrator
     print("\n[1/5] Initializing Orchestrator...")
-    orchestrator = Orchestrator(model_name="gemini-pro")
+    orchestrator = Orchestrator(model_name="gemini-2.5-flash")
     print("    [OK] Orchestrator initialized")
 
     # Verify workflow structure
