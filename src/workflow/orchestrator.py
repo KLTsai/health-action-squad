@@ -20,7 +20,7 @@ import json
 
 from google.adk.agents import SequentialAgent, LoopAgent
 
-from ..domain.state import SessionState, WorkflowStatus, MAX_RETRIES
+from ..domain.state import MAX_RETRIES  # SessionState/WorkflowStatus not used in ADK workflow
 from ..common.config import Config
 from ..utils.logger import get_logger, AgentLogger
 from ..agents.analyst_agent import ReportAnalystAgent

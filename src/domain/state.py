@@ -1,7 +1,19 @@
 """SessionState dataclass for Health Action Squad.
 
-This module defines the immutable SessionState that flows through all agents.
-ALL context must be managed through this state object - no stateless parameter passing.
+DEPRECATED: This module is retained for backward compatibility and testing only.
+
+ADK automatically manages state flow through agent output_keys, so SessionState
+is NOT used in the actual workflow execution. State flows via:
+- ReportAnalyst → output_key: "health_analysis"
+- LifestylePlanner → output_key: "current_plan"
+- SafetyGuard → output_key: "validation_result"
+
+This class can be used for:
+- Type-safe response formatting
+- API response validation
+- Unit testing state transformations
+
+But it is NOT required for ADK workflow execution.
 """
 
 from dataclasses import dataclass, field

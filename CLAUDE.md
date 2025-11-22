@@ -29,6 +29,7 @@
 - **NEVER** create duplicate files (agent_v2.py, enhanced_xyz.py) → ALWAYS extend existing files
 - **NEVER** create multiple implementations of same concept → single source of truth
 - **NEVER** use git commands with -i flag (interactive mode not supported)
+- **NEVER** add promotional messages to git commits (no "Generated with Claude Code" or "Co-Authored-By: Claude")
 
 ### 📝 MANDATORY REQUIREMENTS
 - **ADK AGENTS** - All agents MUST inherit from `google.adk.agents.Agent`, single responsibility principle

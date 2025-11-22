@@ -1,6 +1,18 @@
 """ADK Tool wrappers for Health Action Squad.
 
-Provides ADK-compatible tools for agent use (search, retrieval, etc.).
+DEPRECATED: This module is retained as a placeholder for future enhancements only.
+
+Currently, no external tools are required for the workflow:
+- ReportAnalyst: Parses structured health reports (no external queries)
+- LifestylePlanner: Generates plans from analysis (no tool calls needed)
+- SafetyGuard: Uses ADK's built-in exit_loop tool only
+
+Future tool implementations could include:
+- Medical knowledge search (PubMed, clinical guidelines)
+- Drug interaction checking
+- Nutrition database queries
+
+Until needed, this module serves as a template for ADK FunctionTool wrapping.
 """
 
 
