@@ -92,7 +92,7 @@ guard = SafetyGuardAgent.create_agent(model_name="gemini-pro")
 
 ### Tech Stack
 
-- **Framework**: Google ADK 1.19.0 (Agent Development Kit)
+- **Framework**: Google ADK (>=0.1.0, agent-based architecture)
 - **LLM**: Gemini Pro (via ADK ModelClient)
 - **API**: FastAPI
 - **State Management**: ADK automatic state injection
@@ -106,7 +106,7 @@ guard = SafetyGuardAgent.create_agent(model_name="gemini-pro")
 health-action-squad/
 ├── src/
 │   ├── domain/            # Business logic and domain models
-│   │   └── state.py       # SessionState, WorkflowStatus
+│   │   └── state.py       # SessionState (DEPRECATED - testing only)
 │   ├── workflow/          # Orchestration logic
 │   │   └── orchestrator.py # Main workflow coordinator
 │   ├── common/            # Shared configuration
@@ -114,7 +114,7 @@ health-action-squad/
 │   ├── ai/                # AI/LLM abstractions
 │   │   ├── client.py      # ModelClient factory
 │   │   ├── prompts.py     # Prompt loading utilities
-│   │   └── tools.py       # ADK Tool wrappers
+│   │   └── tools.py       # Tool wrappers (DEPRECATED - placeholder)
 │   ├── agents/            # ADK Agents (Analyst, Planner, Guard)
 │   ├── utils/             # Logger, helpers
 │   └── api/               # FastAPI endpoints
@@ -122,12 +122,63 @@ health-action-squad/
 │   ├── prompts/           # Agent system prompts
 │   ├── data/              # Sample health reports
 │   └── policies/          # safety_rules.yaml
-├── tests/                 # Unit, integration, e2e tests
+├── tests/                 # Unit, integration, e2e, manual tests
+│   ├── unit/              # Unit tests
+│   ├── integration/       # Integration tests
+│   ├── e2e/              # End-to-end tests
+│   └── manual/           # Manual testing scripts
 ├── notebooks/             # Jupyter notebooks for experiments
 ├── docs/                  # Documentation
 ├── output/                # Generated outputs
 └── main.py                # Entry point
 ```
+
+---
+
+## 📡 API Reference
+
+### Endpoints
+
+#### POST /api/v1/generate_plan
+
+Generate personalized health plan from health report
+
+- Request: `HealthReportRequest` (health_report, optional user_profile)
+- Response: `PlanGenerationResponse` with plan, risk_tags, iterations
+
+#### GET /health and GET /api/v1/health
+
+Health check endpoint
+
+- Returns: service status, version, model, uptime
+
+#### GET /
+
+API information and documentation links
+
+- Returns: API name, version, documentation URLs
+
+### Response Fields (POST /api/v1/generate_plan)
+
+```json
+{
+  "session_id": "uuid",              // Unique session identifier
+  "status": "approved",               // "approved" | "rejected" | "fallback"
+  "plan": "# Markdown Plan...",      // Generated lifestyle plan
+  "risk_tags": ["high_cholesterol"], // Identified health risks
+  "iterations": 2,                    // Planner-Guard loop count (1-3)
+  "timestamp": "2025-11-22T...",     // ISO-8601 timestamp
+  "health_analysis": {...},          // Parsed health metrics
+  "validation_result": {...},        // Safety validation details
+  "message": null                    // Optional info message
+}
+```
+
+#### Status Values
+
+- `approved`: Guard validated plan successfully
+- `rejected`: Failed validation after max retries
+- `fallback`: Workflow error, generic advice provided
 
 ---
 
@@ -170,37 +221,86 @@ git push origin main
 
 ---
 
-## 🧪 Testing
+## 🧪 Testing and Coverage
+
+### Run Tests
 
 ```bash
 # Run all tests
 pytest tests/
 
-# Run specific test suites
-pytest tests/unit/              # Unit tests
-pytest tests/integration/       # Integration tests
-pytest tests/e2e/              # End-to-end tests
-
-# With coverage
+# Run with coverage report
 pytest --cov=src tests/
+
+# Generate HTML coverage report
+pytest --cov=src --cov-report=html tests/
+# View at: htmlcov/index.html
+
+# Run specific test suites
+pytest tests/unit/           # Unit tests only
+pytest tests/integration/    # Integration tests only
 ```
+
+### Current Test Coverage
+
+- **Total Coverage**: 79%
+- **Unit Tests**: 38 tests
+- **Integration Tests**: 9 tests
+- **All tests passing** ✅
+
+### Test Structure
+
+- `tests/unit/` - Unit tests for individual components
+- `tests/integration/` - API and workflow integration tests
+- `tests/manual/` - Manual testing and debugging scripts
 
 ---
 
-## 📊 SessionState Schema
+## 📊 ADK State Management
 
-All agent communication uses this immutable state object:
+State flows automatically through ADK's output_key mechanism:
 
-```python
-@dataclass(frozen=True)
-class SessionState:
-    user_profile: dict              # User data
-    health_metrics: dict            # Parsed health data
-    risk_tags: List[str]            # Risk flags
-    current_plan: str               # Generated plan (Markdown)
-    feedback_history: List[Dict]    # Guard feedback per iteration
-    retry_count: int                # Loop counter
-    status: str                     # Enum: INIT|ANALYZING|PLANNING|REVIEWING|APPROVED|FAILED
+- **ReportAnalyst** → output_key: `health_analysis`
+- **LifestylePlanner** → output_key: `current_plan` (uses {health_analysis}, {user_profile})
+- **SafetyGuard** → output_key: `validation_result` (uses {current_plan})
+
+ADK automatically injects state into prompts via `{placeholder}` syntax. No manual state management required.
+
+**Note**: SessionState class exists for backward compatibility and testing only (DEPRECATED).
+
+---
+
+## 📊 Logging and Observability
+
+The project uses structured logging for comprehensive observability:
+
+### AgentLogger Features
+
+- Session-level tracing with unique `session_id`
+- Agent lifecycle tracking (creation, execution, completion)
+- Loop iteration counting in Planner-Guard cycles
+- Guard decision logging (APPROVE/REJECT) with feedback
+- Error tracking with full context and stack traces
+
+### Log Configuration
+
+- Default level: INFO (configurable via `LOG_LEVEL` env var)
+- Format: JSON structured logs (configurable via `LOG_FORMAT`)
+- Output: Console and file (`logs/` directory)
+
+### Example Log Entry
+
+```json
+{
+  "timestamp": "2025-11-22T10:30:00Z",
+  "level": "INFO",
+  "logger": "Orchestrator",
+  "session_id": "abc-123",
+  "agent": "SafetyGuard",
+  "iteration": 2,
+  "decision": "APPROVE",
+  "message": "Plan approved after validation"
+}
 ```
 
 ---
