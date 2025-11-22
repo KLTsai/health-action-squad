@@ -54,35 +54,10 @@ class LifestylePlannerAgent:
             state_injection_fields=["health_analysis", "user_profile", "validation_result"]
         )
 
-        # Add state injection placeholders
-        enhanced_prompt = f"""{system_prompt}
-
-# Context
-You will receive health analysis results and user profile information.
-
-## Health Analysis (from ReportAnalyst)
-{{health_analysis}}
-
-## User Profile
-{{user_profile}}
-
-## Previous Feedback (if this is a retry)
-{{validation_result}}
-
-# Instructions
-1. Generate a personalized Markdown lifestyle plan based on the health analysis
-2. Address all identified risk tags
-3. Keep the plan under 1500 words
-4. Include medical disclaimers
-5. Cite credible sources for medical recommendations
-6. If feedback is provided, incorporate it to improve the plan
-7. MUST include disclaimer: "This plan is for informational purposes only. Always consult with your healthcare provider before making significant lifestyle changes."
-"""
-
         return LlmAgent(
             name="LifestylePlanner",
             model=model_name,
-            instruction=enhanced_prompt,
+            instruction=system_prompt,
             output_key="current_plan",
             description="Generates personalized lifestyle plans from health metrics"
         )
