@@ -315,6 +315,63 @@ The project uses structured logging for comprehensive observability:
 
 ---
 
+## 🩺 Medical Credibility & Evidence-Based Approach
+
+### Why Trust This System?
+
+**Problem**: Many AI health apps use black-box LLM knowledge without traceable medical sources.
+
+**Our Solution**: Evidence-based thresholds with transparent guideline references.
+
+### How We Ensure Reliability
+
+1. **Documented Guidelines** (`resources/policies/medical_guidelines.yaml`)
+   - Every threshold cites published medical guidelines (NCEP ATP III, ACC/AHA, ADA, WHO)
+   - Example: "Cholesterol ≥200 mg/dL" → References NCEP ATP III Guidelines (2002)
+   - Asian-specific adjustments (e.g., BMI ≥23 for overweight in Taiwan)
+
+2. **Quarterly Review Enforcement**
+   - Automated tests fail if guidelines are >90 days old (see `tests/validation/`)
+   - CI/CD enforces review cycle to catch outdated medical standards
+   - Maintenance protocol documents update process
+
+3. **Transparent Limitations**
+   - Legal disclaimer: "NOT FOR DIAGNOSTIC USE"
+   - Clear scope: Standard health metrics for adults 18-65
+   - Recommends professional medical consultation for all decisions
+
+### Why YAML Instead of RAG/API?
+
+**Short answer**: Transparency and reliability over automation (suitable for MVP/POC phase).
+
+| Approach | Our Choice | Reason |
+|----------|------------|--------|
+| **Static YAML** | ✅ Current | Traceable sources, zero cost, stable guidelines, audit-friendly |
+| **RAG (Retrieval)** | ⏳ Future | Complex setup, costly, risk of retrieval errors, better for rare conditions |
+| **Public APIs** | ❌ Not viable | No free "clinical threshold APIs" exist for our use case |
+
+**Suitable for**: Standard health screenings (cholesterol, BP, glucose, BMI) where guidelines are stable (updated annually, not daily).
+
+**Future scaling**: Will upgrade to RAG for rare conditions or real-time research integration when justified by user needs and revenue.
+
+### Target Users
+
+- **Primary**: Health-conscious adults (25-45) who receive health reports but struggle to interpret them
+- **Value proposition**: "Health report translator + action coach" (not a doctor replacement)
+- **Differentiator**: Every risk assessment is traceable to published medical guidelines
+
+### Medical Guideline Sources
+
+- **NCEP ATP III** (2002): Lipid panel thresholds
+- **ACC/AHA 2017**: Blood pressure classification (130/80 threshold)
+- **ADA 2025**: Diabetes diagnostic criteria
+- **WHO 2004**: Asian-specific BMI cutoffs
+- **IDF 2006**: Metabolic syndrome criteria
+
+Full documentation: [medical_guidelines.yaml](resources/policies/medical_guidelines.yaml)
+
+---
+
 ## 📚 Resources
 
 - [CLAUDE.md](CLAUDE.md) - Project rules and standards (READ FIRST)

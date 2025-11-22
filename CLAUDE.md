@@ -37,6 +37,7 @@
 - **TOOL WRAPPING** - All external tools MUST use ADK Tool interface (FunctionTool wrapper)
 - **CIRCUIT BREAKER** - Planner → Guard → Planner retry loop MUST have max 3 attempts
 - **SAFETY POLICY** - SafetyGuardAgent MUST reference `resources/policies/safety_rules.yaml`
+- **MEDICAL GUIDELINES** - ReportAnalystAgent MUST reference `resources/policies/medical_guidelines.yaml` for evidence-based thresholds
 - **COMMIT FREQUENTLY** - After every completed task/phase - no exceptions
 - **GITHUB BACKUP** - Push to GitHub after every commit: `git push origin main`
 - **READ FIRST** - Always read files before editing - Edit/Write tools will fail otherwise
@@ -396,6 +397,128 @@ Initial State
 - If 3 retry loops fail → output unified safe advice
 - See Orchestrator workflow for implementation
 - Log all fallback triggers for analysis
+
+---
+
+## 🩺 Medical Guideline Management
+
+### Evidence-Based Approach
+
+**Problem**: AI health systems often use LLM knowledge without traceable medical sources, creating trust issues with domain experts.
+
+**Solution**: Transparent, evidence-based thresholds documented in `resources/policies/medical_guidelines.yaml`.
+
+### Architecture Decision: YAML vs RAG vs API
+
+**Current approach (MVP/POC)**: Static YAML with quarterly review
+
+| Approach | Pros | Cons | Decision |
+|----------|------|------|----------|
+| **Static YAML** | Transparent, zero cost, stable, audit-friendly | Manual updates required | ✅ Current (POC) |
+| **RAG** | Auto-updates, handles rare conditions | Complex, costly, retrieval errors | ⏳ Future |
+| **Public APIs** | Real-time updates | No free clinical threshold APIs exist | ❌ Not viable |
+
+**Rationale**:
+- Standard health metrics (cholesterol, BP, glucose, BMI) have stable guidelines (updated annually, not daily)
+- Transparency > automation for medical credibility
+- Zero runtime cost suitable for MVP phase
+- Easy for medical professionals to audit and validate
+
+### Medical Guidelines File Structure
+
+```yaml
+# resources/policies/medical_guidelines.yaml
+version: "1.0.0"
+last_reviewed: "2025-11-22"
+next_review_due: "2026-02-22"  # Enforced by CI/CD tests
+
+lipid_panel:
+  total_cholesterol:
+    reference_ranges:
+      optimal: "<200"
+      borderline_high: "200-239"
+      high: "≥240"
+    source:
+      guideline: "NCEP ATP III Guidelines"
+      year: 2002
+      url: "https://www.ncbi.nlm.nih.gov/books/NBK542294/"
+```
+
+**Key Features**:
+- Every threshold cites published guidelines (NCEP, AHA, ACC, ADA, WHO)
+- Asian-specific adjustments (e.g., BMI ≥23 for overweight in Taiwan)
+- Version tracking and review dates
+- Legal disclaimer and maintenance protocol
+
+### Automated Validation
+
+**Test Suite**: `tests/validation/test_guideline_integrity.py`
+
+**Critical Tests**:
+1. **Expiry Check**: Fails if guidelines >90 days old (enforces quarterly review)
+2. **Known Thresholds**: Validates evidence-based thresholds (e.g., cholesterol ≥200, HbA1c ≥6.5%)
+3. **Source Citations**: Ensures all sections cite medical guideline sources
+4. **Asian Adjustments**: Verifies Taiwan-specific standards present
+
+**CI/CD Integration**:
+```bash
+# Automated tests run on every commit
+pytest tests/validation/test_guideline_integrity.py
+# Fails if guidelines expired → forces review before merging
+```
+
+### Quarterly Review Protocol
+
+**Checklist** (documented in medical_guidelines.yaml):
+1. Check ADA Standards (released annually in January)
+2. Check ACC/AHA cardiovascular guideline updates
+3. Review Taiwan MOH recommendations: https://www.mohw.gov.tw/
+4. Update version number and changelog
+5. Re-run validation test suite
+
+**Workflow**:
+```bash
+# Review → Update YAML → Run tests → Commit
+vim resources/policies/medical_guidelines.yaml
+pytest tests/validation/
+git commit -m "docs: Update medical guidelines to v1.1.0 (2026-Q1 review)"
+git push origin main
+```
+
+### Integration with Agents
+
+**ReportAnalystAgent** (`resources/prompts/analyst_prompt.txt`):
+```
+## Medical Guideline Reference
+
+All risk thresholds are based on evidence-based clinical guidelines:
+- Source: resources/policies/medical_guidelines.yaml
+- Version: 1.0.0 (Last Reviewed: 2025-11-22)
+- Guidelines: NCEP ATP III, ACC/AHA 2017/2019, ADA 2025, WHO 2004
+
+Example:
+- `high_cholesterol`: Total cholesterol ≥200 mg/dL (NCEP ATP III)
+- `high_blood_pressure`: Systolic ≥130 OR Diastolic ≥80 mmHg (ACC/AHA 2017)
+```
+
+**Benefits**:
+- Analysts can verify every threshold against published guidelines
+- Medical professionals can audit and challenge specific thresholds
+- Clear upgrade path to RAG when justified by user needs
+
+### Future Scaling Considerations
+
+**When to upgrade to RAG**:
+- Handling rare conditions not in standard health screenings
+- Real-time integration of latest medical research
+- Revenue justifies infrastructure cost (~$200-500/month)
+- User feedback indicates need for more dynamic updates
+
+**When to stay with YAML**:
+- Standard health metrics (current scope)
+- MVP/POC phase with limited budget
+- Quarterly guideline updates are sufficient
+- Transparency requirements outweigh automation benefits
 
 ---
 

@@ -1,0 +1,299 @@
+# Medical Guidelines Reference Database
+# Health Action Squad - Clinical Reference Standards
+#
+# PURPOSE: Establish evidence-based thresholds for health risk assessment
+# APPROACH: Static YAML with quarterly manual review (transparency over automation)
+#
+# WHY YAML INSTEAD OF RAG/API?
+# - Transparency: All thresholds traceable to medical sources
+# - Cost: Zero runtime cost, no external dependencies
+# - Reliability: Stable standards (guidelines change ~annually, not daily)
+# - Auditability: Medical professionals can review and validate
+# - Suitable for POC/MVP phase with standard health metrics
+#
+# MAINTENANCE: Quarterly review (90-day expiry enforced by CI/CD tests)
+# LAST UPDATED: 2025-11-22
+# NEXT REVIEW DUE: 2026-02-22
+
+version: "1.0.0"
+last_reviewed: "2025-11-22"
+next_review_due: "2026-02-22"
+target_population: "Adults aged 18-65"
+geographic_scope: ["International standards", "Taiwan-specific adjustments"]
+
+# =============================================================================
+# LIPID PANEL (血脂檢查)
+# Source: NCEP ATP III Guidelines (2002), ACC/AHA 2019
+# =============================================================================
+lipid_panel:
+
+  total_cholesterol:
+    unit: "mg/dL"
+    conversion: "mmol/L = mg/dL ÷ 38.67"
+    reference_ranges:
+      optimal: "<200"
+      borderline_high: "200-239"
+      high: "≥240"
+    source:
+      guideline: "NCEP ATP III Guidelines"
+      year: 2002
+      organization: "National Heart, Lung, and Blood Institute"
+      url: "https://www.ncbi.nlm.nih.gov/books/NBK542294/"
+    notes: "Total cholesterol alone insufficient for CVD risk assessment"
+
+  ldl_cholesterol:
+    full_name: "Low-Density Lipoprotein (壞膽固醇)"
+    unit: "mg/dL"
+    reference_ranges:
+      optimal: "<100"
+      near_optimal: "100-129"
+      borderline_high: "130-159"
+      high: "160-189"
+      very_high: "≥190"
+    source:
+      guideline: "ACC/AHA Cholesterol Guidelines"
+      year: 2019
+      url: "https://www.ahajournals.org/doi/10.1161/CIR.0000000000000625"
+
+  hdl_cholesterol:
+    full_name: "High-Density Lipoprotein (好膽固醇)"
+    unit: "mg/dL"
+    reference_ranges:
+      low_men: "<40"
+      low_women: "<50"
+      optimal: "≥60"
+    source:
+      guideline: "NCEP ATP III"
+      year: 2002
+      note: "HDL <40 (men) or <50 (women) is a major CVD risk factor"
+
+  triglycerides:
+    unit: "mg/dL"
+    reference_ranges:
+      normal: "<150"
+      borderline_high: "150-199"
+      high: "200-499"
+      very_high: "≥500"
+    source:
+      guideline: "NCEP ATP III"
+      year: 2002
+
+# =============================================================================
+# BLOOD PRESSURE (血壓)
+# Source: ACC/AHA 2017 Guidelines
+# =============================================================================
+blood_pressure:
+
+  systolic:
+    unit: "mmHg"
+    reference_ranges:
+      normal: "<120"
+      elevated: "120-129"
+      stage1_hypertension: "130-139"
+      stage2_hypertension: "≥140"
+      hypertensive_crisis: ">180"
+    source:
+      guideline: "ACC/AHA Blood Pressure Guidelines"
+      year: 2017
+      url: "https://www.ahajournals.org/doi/10.1161/HYP.0000000000000065"
+      key_change: "Lowered threshold from 140/90 to 130/80"
+
+  diastolic:
+    unit: "mmHg"
+    reference_ranges:
+      normal: "<80"
+      stage1_hypertension: "80-89"
+      stage2_hypertension: "≥90"
+      hypertensive_crisis: ">120"
+
+  taiwan_note: "Taiwan follows ACC/AHA 2017 guidelines"
+
+# =============================================================================
+# GLUCOSE METABOLISM (血糖代謝)
+# Source: ADA Standards of Medical Care in Diabetes 2025
+# =============================================================================
+glucose_metabolism:
+
+  fasting_glucose:
+    unit: "mg/dL"
+    conversion: "mmol/L = mg/dL ÷ 18"
+    test_conditions: "Fasting for 8+ hours"
+    reference_ranges:
+      normal: "<100"
+      impaired_fasting_glucose: "100-125"
+      diabetes: "≥126"
+    source:
+      guideline: "ADA Standards of Medical Care in Diabetes"
+      year: 2025
+      url: "https://diabetesjournals.org/care/issue/48/Supplement_1"
+
+  hba1c:
+    full_name: "Glycated Hemoglobin (糖化血色素)"
+    unit: "%"
+    description: "Average blood glucose over past 2-3 months"
+    reference_ranges:
+      normal: "<5.7"
+      prediabetes: "5.7-6.4"
+      diabetes: "≥6.5"
+      poor_control: ">8.0"
+    source:
+      guideline: "ADA Standards of Medical Care"
+      year: 2025
+    advantages:
+      - "No fasting required"
+      - "Less day-to-day variability"
+      - "Reflects long-term glucose control"
+
+# =============================================================================
+# ANTHROPOMETRIC MEASUREMENTS (身體測量)
+# Source: WHO (international), WHO Expert Consultation 2004 (Asian)
+# =============================================================================
+anthropometry:
+
+  bmi:
+    full_name: "Body Mass Index"
+    calculation: "weight(kg) ÷ [height(m)]²"
+    unit: "kg/m²"
+
+    # Standard WHO classification
+    reference_ranges_international:
+      underweight: "<18.5"
+      normal: "18.5-24.9"
+      overweight: "25.0-29.9"
+      obese_class1: "30.0-34.9"
+      obese_class2: "35.0-39.9"
+      obese_class3: "≥40.0"
+
+    source_international:
+      guideline: "WHO BMI Classification"
+      year: 2000
+      url: "https://www.who.int/health-topics/obesity"
+
+    # Asian-specific cutoffs (CRITICAL for Taiwan/Asian populations)
+    reference_ranges_asian:
+      underweight: "<18.5"
+      normal: "18.5-22.9"
+      overweight: "23.0-24.9"
+      obese_class1: "25.0-29.9"
+      obese_class2: "≥30.0"
+
+    source_asian:
+      guideline: "WHO Expert Consultation on BMI in Asian Populations"
+      year: 2004
+      rationale: "Asians have higher body fat % at lower BMI"
+      url: "https://www.ncbi.nlm.nih.gov/pubmed/15128812"
+
+    taiwan_note: "Taiwan officially uses Asian BMI standards (overweight ≥23)"
+
+  waist_circumference:
+    unit: "cm"
+    description: "Marker of abdominal obesity and metabolic risk"
+    reference_ranges:
+      men_asian: "≥90 cm (increased risk)"
+      women_asian: "≥80 cm (increased risk)"
+      men_caucasian: "≥102 cm (increased risk)"
+      women_caucasian: "≥88 cm (increased risk)"
+    source:
+      guideline: "IDF Metabolic Syndrome Definition"
+      year: 2006
+
+# =============================================================================
+# LIFESTYLE RISK FACTORS (生活型態風險因子)
+# Source: WHO Physical Activity Guidelines 2020
+# =============================================================================
+lifestyle_factors:
+
+  physical_activity:
+    recommendations:
+      adults_aerobic: "≥150 min/week moderate OR ≥75 min/week vigorous"
+      muscle_strengthening: "≥2 days/week"
+    risk_categories:
+      sedentary: "<30 min/week"
+      insufficient: "30-149 min/week"
+      adequate: "≥150 min/week"
+    source:
+      guideline: "WHO Physical Activity Guidelines"
+      year: 2020
+
+  smoking:
+    risk_categories:
+      current_smoker: "Currently smokes (2-4x CVD risk)"
+      former_smoker: "Quit within past 5 years"
+      never_smoker: "Never smoked or quit >5 years ago"
+    source: "Framingham Heart Study / AHA Guidelines"
+
+  alcohol_consumption:
+    unit: "standard drinks per week"
+    standard_drink: "14g pure alcohol (355ml beer, 150ml wine, 45ml spirits)"
+    risk_categories:
+      low_risk_men: "≤14 drinks/week AND ≤4 drinks/day"
+      low_risk_women: "≤7 drinks/week AND ≤3 drinks/day"
+      high_risk_men: ">21 drinks/week OR >4 drinks/day"
+      high_risk_women: ">14 drinks/week OR >3 drinks/day"
+    source:
+      guideline: "NIAAA (National Institute on Alcohol Abuse and Alcoholism)"
+      url: "https://www.niaaa.nih.gov/alcohol-health/overview-alcohol-consumption/moderate-binge-drinking"
+
+# =============================================================================
+# COMPOSITE RISK SCORES (綜合風險評分)
+# =============================================================================
+composite_scores:
+
+  metabolic_syndrome:
+    description: "Cluster of conditions increasing CVD and diabetes risk"
+    diagnostic_criteria:
+      criteria_needed: 3
+      components:
+        - "Waist: Men ≥90cm / Women ≥80cm (Asian)"
+        - "Triglycerides ≥150 mg/dL OR on treatment"
+        - "HDL: Men <40 / Women <50 mg/dL OR on treatment"
+        - "Blood pressure ≥130/85 mmHg OR on treatment"
+        - "Fasting glucose ≥100 mg/dL OR on treatment"
+    source:
+      guideline: "International Diabetes Federation (IDF)"
+      year: 2006
+      url: "https://www.idf.org/our-activities/advocacy-awareness/resources-and-tools/60:idfconsensus-worldwide-definitionof-the-metabolic-syndrome.html"
+
+# =============================================================================
+# MAINTENANCE PROTOCOL
+# =============================================================================
+maintenance_protocol: |
+  QUARTERLY REVIEW CHECKLIST:
+  1. Check ADA Standards (released annually in January)
+  2. Check ACC/AHA cardiovascular guideline updates
+  3. Review Taiwan MOH recommendations: https://www.mohw.gov.tw/
+  4. Update version number and changelog
+  5. Re-run validation test suite: pytest tests/validation/
+
+# =============================================================================
+# LEGAL DISCLAIMER
+# =============================================================================
+legal_disclaimer: |
+  This file contains clinical reference ranges from published medical guidelines.
+
+  NOT FOR DIAGNOSTIC USE:
+  - This database does not replace professional medical judgment
+  - Individual patient context must be considered by healthcare professionals
+  - Laboratory reference ranges may vary by testing method and local population
+
+  LIMITATION OF LIABILITY:
+  - Authors assume no responsibility for clinical decisions based on this data
+  - Users must verify current recommendations from original guideline sources
+
+  COPYRIGHT & ATTRIBUTION:
+  - All guidelines referenced belong to their respective organizations (NCEP, AHA, ACC, ADA, WHO, IDF)
+  - This compilation is for educational and non-commercial use only
+
+# =============================================================================
+# VERSION HISTORY
+# =============================================================================
+changelog:
+  v1.0.0:
+    date: "2025-11-22"
+    changes:
+      - "Initial release with NCEP ATP III lipid guidelines"
+      - "ACC/AHA 2017 blood pressure guidelines"
+      - "ADA 2025 diabetes guidelines"
+      - "Asian-specific BMI cutoffs (WHO 2004)"
+      - "IDF metabolic syndrome criteria"
+      - "WHO physical activity recommendations"
