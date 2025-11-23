@@ -54,6 +54,15 @@ class Config:
     RATE_LIMIT_REQUESTS: int = int(os.getenv("RATE_LIMIT_REQUESTS", "10"))
     RATE_LIMIT_PERIOD: str = os.getenv("RATE_LIMIT_PERIOD", "1 hour")
 
+    # File upload configuration
+    MAX_UPLOAD_FILES: int = int(os.getenv("MAX_UPLOAD_FILES", "10"))
+    MAX_TOTAL_UPLOAD_SIZE: int = int(
+        os.getenv("MAX_TOTAL_UPLOAD_SIZE", str(50 * 1024 * 1024))
+    )  # 50MB default
+    MAX_FILE_SIZE: int = int(
+        os.getenv("MAX_FILE_SIZE", str(10 * 1024 * 1024))
+    )  # 10MB per file
+
     # Logging
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
     LOG_FORMAT: str = os.getenv("LOG_FORMAT", "json")

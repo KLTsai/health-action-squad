@@ -291,6 +291,51 @@ class UploadReportRequest(BaseModel):
     )
 
 
+class MultiFileUploadStats(BaseModel):
+    """Statistics for multi-file upload processing.
+
+    Attributes:
+        total_files: Total number of files uploaded
+        successfully_parsed: Number of files parsed successfully
+        failed_files: List of filenames that failed to parse
+        total_size_bytes: Total size of all uploaded files
+        parsing_time_seconds: Total time spent parsing all files
+    """
+
+    total_files: int = Field(
+        ..., description="Total number of files uploaded", ge=1
+    )
+
+    successfully_parsed: int = Field(
+        ..., description="Number of files parsed successfully", ge=0
+    )
+
+    failed_files: List[str] = Field(
+        default_factory=list,
+        description="List of filenames that failed validation or parsing",
+    )
+
+    total_size_bytes: int = Field(
+        ..., description="Total size of all uploaded files in bytes", ge=0
+    )
+
+    parsing_time_seconds: Optional[float] = Field(
+        default=None, description="Total time spent parsing in seconds"
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "total_files": 3,
+                "successfully_parsed": 3,
+                "failed_files": [],
+                "total_size_bytes": 1024000,
+                "parsing_time_seconds": 2.5,
+            }
+        }
+    )
+
+
 class ParsedReportResponse(BaseModel):
     """Response model for parsed health report with generated plan.
 
@@ -366,6 +411,11 @@ class ParsedReportResponse(BaseModel):
         description="Optional informational message",
     )
 
+    upload_stats: Optional[MultiFileUploadStats] = Field(
+        default=None,
+        description="Statistics for multi-file uploads (only present when files uploaded)",
+    )
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -390,6 +440,13 @@ class ParsedReportResponse(BaseModel):
                 "validation_result": {
                     "decision": "APPROVE",
                     "feedback": "Plan meets all safety criteria",
+                },
+                "upload_stats": {
+                    "total_files": 3,
+                    "successfully_parsed": 3,
+                    "failed_files": [],
+                    "total_size_bytes": 1024000,
+                    "parsing_time_seconds": 2.5,
                 },
             }
         }
