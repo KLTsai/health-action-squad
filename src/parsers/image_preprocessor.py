@@ -167,9 +167,26 @@ class ImagePreprocessor:
         Detect and correct perspective distortion (for angled photos)
 
         Uses edge detection + contour finding to detect document boundaries
+
+        Performance optimization: Downscale large images before processing
         """
+        # PERFORMANCE OPTIMIZATION: Downscale if image is too large
+        # Perspective detection works fine on smaller images and is MUCH faster
+        original_shape = image.shape
+        max_dimension = 2000  # Max width/height for perspective detection
+
+        if max(image.shape[0], image.shape[1]) > max_dimension:
+            scale = max_dimension / max(image.shape[0], image.shape[1])
+            small_width = int(image.shape[1] * scale)
+            small_height = int(image.shape[0] * scale)
+            working_image = cv2.resize(image, (small_width, small_height), interpolation=cv2.INTER_AREA)
+            logger.info(f"Downscaled image for perspective detection: {original_shape[:2]} -> {working_image.shape[:2]}")
+        else:
+            working_image = image
+            scale = 1.0
+
         # Convert to grayscale
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        gray = cv2.cvtColor(working_image, cv2.COLOR_BGR2GRAY)
 
         # Apply Gaussian blur to reduce noise
         blurred = cv2.GaussianBlur(gray, (5, 5), 0)
@@ -188,7 +205,7 @@ class ImagePreprocessor:
 
         for contour in contours:
             area = cv2.contourArea(contour)
-            if area > max_area and area > 0.1 * image.shape[0] * image.shape[1]:
+            if area > max_area and area > 0.1 * working_image.shape[0] * working_image.shape[1]:
                 # Approximate contour to polygon
                 peri = cv2.arcLength(contour, True)
                 approx = cv2.approxPolyDP(contour, 0.02 * peri, True)
@@ -200,8 +217,8 @@ class ImagePreprocessor:
 
         # Apply perspective transform if valid contour found
         if best_contour is not None:
-            # Order points: top-left, top-right, bottom-right, bottom-left
-            points = best_contour.reshape(4, 2)
+            # Scale contour points back to original image size
+            points = best_contour.reshape(4, 2) / scale
             ordered_points = self._order_points(points)
 
             # Compute destination points (rectangle)

@@ -131,7 +131,7 @@ class Orchestrator:
             }
 
             # Execute ADK workflow (SequentialAgent handles orchestration)
-            result = await self.workflow.run(initial_state)
+            result = await self.workflow.run_async(initial_state)
 
             # ADK automatically manages state flow through output_keys:
             # - Analyst outputs to "health_analysis"

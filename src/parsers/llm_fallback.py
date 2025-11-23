@@ -266,14 +266,12 @@ class GeminiStructuredExtractor:
             mime_type = self._determine_mime_type(file_path)
 
             # Create content with image for Gemini API
+            # Use correct Gemini API format with inline_data
             content = [
+                EXTRACTION_PROMPT.format(content="[Image analysis]"),
                 {
-                    "type": "image",
+                    "mime_type": mime_type,
                     "data": image_data,
-                },
-                {
-                    "type": "text",
-                    "text": EXTRACTION_PROMPT.format(content="[Image analysis]"),
                 },
             ]
 
