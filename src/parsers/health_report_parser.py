@@ -354,7 +354,10 @@ class HealthReportParser:
             processed_file_path = file_path
             if self.preprocess_images and file_type in (FileType.JPG, FileType.JPEG, FileType.PNG):
                 agent_logger.info("Preprocessing mobile photo for OCR optimization")
-                processed_file_path = self.image_preprocessor.preprocess(file_path)
+                # Run preprocessing in thread pool for true parallelism (CPU-intensive operation)
+                processed_file_path = await asyncio.to_thread(
+                    self.image_preprocessor.preprocess, file_path, quick_mode=True
+                )
                 agent_logger.info("Image preprocessing completed", output=processed_file_path)
 
             # Step 3: Load file and convert to images
@@ -366,7 +369,10 @@ class HealthReportParser:
                 raise ValueError(f"File type not handled: {file_type}")
 
             # Step 4: Extract data using OCR
-            ocr_data, ocr_completeness = self._extract_from_ocr(images)
+            # Run OCR in thread pool for true parallelism (CPU-intensive operation)
+            ocr_data, ocr_completeness = await asyncio.to_thread(
+                self._extract_from_ocr, images
+            )
             agent_logger.info(
                 "OCR extraction completed",
                 completeness=ocr_completeness,

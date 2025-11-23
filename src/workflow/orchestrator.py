@@ -131,7 +131,26 @@ class Orchestrator:
             }
 
             # Execute ADK workflow (SequentialAgent handles orchestration)
-            result = await self.workflow.run_async(initial_state)
+            # IMPORTANT: run_async() returns an async generator, not an awaitable
+            # We must consume the generator to execute the workflow
+            final_result = None
+            async for event in self.workflow.run_async(initial_state):
+                # ADK emits events during execution
+                # The final event contains the complete workflow result
+                if hasattr(event, 'is_final_response') and event.is_final_response():
+                    final_result = event
+                    break
+                # For non-final events, we can access them as dictionaries
+                elif isinstance(event, dict):
+                    final_result = event
+
+            # If no final result captured, use the last event
+            if final_result is None:
+                self.logger.warning(
+                    "No final response detected, using last event",
+                    extra={"session_id": session_id}
+                )
+                final_result = event if 'event' in locals() else {}
 
             # ADK automatically manages state flow through output_keys:
             # - Analyst outputs to "health_analysis"
@@ -146,7 +165,7 @@ class Orchestrator:
                 }
             )
 
-            return self._format_adk_output(result, session_id, timestamp)
+            return self._format_adk_output(final_result, session_id, timestamp)
 
         except Exception as e:
             self.logger.error(
