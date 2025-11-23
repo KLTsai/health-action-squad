@@ -32,6 +32,39 @@ cp .env.example .env
 # Optional: MODEL_NAME, TEMPERATURE, MAX_TOKENS, LOG_LEVEL
 ```
 
+### 3a. System Dependencies for PDF Processing
+
+**For PDF to image conversion (pdf2image), you need Poppler:**
+
+**Ubuntu/Debian:**
+
+```bash
+sudo apt-get install poppler-utils
+```
+
+**macOS:**
+
+```bash
+brew install poppler
+```
+
+**Windows:**
+
+Download from: [poppler-windows](https://github.com/oschwartz10612/poppler-windows/releases/)
+Extract to `C:\Program Files\poppler\bin` and add to PATH
+
+**Verify installation:**
+
+```bash
+pdftoppm -v  # Should show version info
+```
+
+**PaddleOCR Dependencies:**
+
+- Automatically installed with `pip install paddleocr`
+- First run downloads pre-trained models (~500MB)
+- Models cached in `~/.paddleocr/` directory
+
 ### 3. Run the Application
 
 ```bash
@@ -132,6 +165,93 @@ health-action-squad/
 ├── output/                # Generated outputs
 └── main.py                # Entry point
 ```
+
+---
+
+## 📄 PDF Upload & Auto-Parsing
+
+### Overview
+
+The system supports direct PDF file uploads with automatic parsing using hospital report templates. PDFs are converted to images, processed with OCR (PaddleOCR), and structured data is extracted using pattern matching and LLM fallback.
+
+### Supported Hospital Formats
+
+Currently supported hospital report templates:
+
+- **National Taiwan University Hospital (NTUH)** - Common labs and clinical reports
+- **Taipei Veterans General Hospital** - Multi-page screening formats
+- **Generic Hospital Reports** - Standard health screening formats
+
+### API Usage: POST /api/v1/upload_report
+
+Upload a PDF health report for automatic parsing and plan generation.
+
+**Request:**
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/upload_report" \
+  -F "file=@path/to/health_report.pdf" \
+  -F "user_profile={\"age\": 35, \"gender\": \"M\"}" \
+  -H "Accept: application/json"
+```
+
+**Request Parameters:**
+
+- `file` (required): PDF file upload (multipart/form-data)
+- `user_profile` (optional): JSON string with optional user information
+  - `age`: Patient age
+  - `gender`: Patient gender (M/F)
+  - `medical_history`: Pre-existing conditions
+
+**Response:**
+
+```json
+{
+  "session_id": "uuid",
+  "status": "approved",
+  "plan": "# Personalized Health Plan...",
+  "risk_tags": ["high_cholesterol", "elevated_blood_pressure"],
+  "extracted_data": {
+    "total_cholesterol": 240,
+    "hdl": 35,
+    "ldl": 180,
+    "blood_pressure": "140/90",
+    "fasting_glucose": 110
+  },
+  "parsing_method": "template_match",
+  "confidence": 0.95,
+  "iterations": 2,
+  "timestamp": "2025-11-22T10:30:00Z"
+}
+```
+
+### Data Extraction Priority
+
+The parser uses a priority-based approach for maximum accuracy:
+
+1. **Template Matching** (Highest priority) - Regex patterns for known hospital formats
+2. **OCR + LLM** (Fallback) - PaddleOCR text extraction + Gemini LLM structured parsing
+3. **Manual Input** (Final fallback) - User provides data directly
+
+### Troubleshooting PDF Parsing
+
+#### Failed to extract data from PDF
+
+- Ensure PDF is not scanned image-only (use OCR if needed)
+- Check file size is < 20MB
+- Verify file is valid PDF format
+
+#### Low confidence in extracted values
+
+- Confidence threshold for auto-use is 0.85
+- Below threshold → LLM requests manual verification
+- Check `parsing_method` in response (template_match vs ocr_fallback)
+
+#### Hospital format not recognized
+
+- System falls back to OCR for unknown formats
+- Add new template to `src/parsers/templates/`
+- See [PDF Parser Guide](docs/pdf_parser_guide.md) for adding custom templates
 
 ---
 

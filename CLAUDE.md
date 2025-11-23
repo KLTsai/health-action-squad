@@ -99,6 +99,15 @@ health-action-squad/
 │   │   ├── analyst_agent.py   # ReportAnalystAgent
 │   │   ├── planner_agent.py   # LifestylePlannerAgent
 │   │   └── guard_agent.py     # SafetyGuardAgent
+│   ├── parsers/               # PDF parsing & OCR module
+│   │   ├── pdf_processor.py   # PDF → image conversion (pdf2image)
+│   │   ├── ocr_engine.py      # OCR wrapper (PaddleOCR)
+│   │   ├── data_extractor.py  # Regex template matching
+│   │   ├── llm_parser.py      # LLM-based structured extraction
+│   │   └── templates/         # Hospital-specific templates
+│   │       ├── ntuh_template.py
+│   │       ├── tvgh_template.py
+│   │       └── generic_template.py
 │   ├── utils/
 │   │   └── logger.py          # Structured logging with A2A trace
 │   └── api/
@@ -107,19 +116,24 @@ health-action-squad/
 │   ├── prompts/               # Agent system prompts
 │   │   ├── analyst_prompt.txt
 │   │   ├── planner_prompt.txt
-│   │   └── guard_prompt.txt
+│   │   ├── guard_prompt.txt
+│   │   └── llm_parser_prompt.txt
 │   ├── data/                  # Health report mocks
 │   └── policies/              # Safety rules YAML
 │       └── safety_rules.yaml
 ├── tests/
 │   ├── unit/                  # Unit tests
+│   │   └── parsers/           # Parser unit tests
 │   ├── integration/           # Integration tests
+│   │   └── test_pdf_upload_flow.py
 │   └── e2e/                   # End-to-end tests
 ├── notebooks/                 # Jupyter notebooks
 │   ├── exploratory/           # Data exploration
 │   └── experiments/           # ML experiments
 ├── docs/                      # Documentation
+│   └── pdf_parser_guide.md    # PDF parser implementation guide
 ├── output/                    # Generated outputs
+│   └── parsed_pdfs/           # Audit trail of parsed PDFs
 ├── logs/                      # Log files
 ├── main.py                    # Entry point
 ├── requirements.txt           # Python dependencies
@@ -519,6 +533,294 @@ Example:
 - MVP/POC phase with limited budget
 - Quarterly guideline updates are sufficient
 - Transparency requirements outweigh automation benefits
+
+---
+
+## 📄 PDF Parser Architecture
+
+### Overview
+
+**Purpose**: Enable direct PDF health report uploads with automatic data extraction, reducing manual data entry and improving user experience.
+
+**Data Extraction Priority** (highest to lowest):
+
+1. **Template Matching** - Known hospital format regex patterns
+2. **OCR + LLM** - PaddleOCR text extraction + Gemini structured parsing
+3. **Manual Input** - User provides data directly (fallback)
+
+### Module Structure
+
+```
+src/
+├── parsers/                    # PDF parsing module
+│   ├── __init__.py
+│   ├── pdf_processor.py        # Main PDF → image conversion
+│   ├── ocr_engine.py           # PaddleOCR wrapper + extraction
+│   ├── data_extractor.py       # Regex pattern matching & validation
+│   ├── llm_parser.py           # LLM-based structured extraction (fallback)
+│   └── templates/              # Hospital-specific templates
+│       ├── __init__.py
+│       ├── ntuh_template.py    # National Taiwan University Hospital
+│       ├── tvgh_template.py    # Taipei Veterans General Hospital
+│       └── generic_template.py # Generic health report format
+```
+
+### PDF Processing Flow
+
+```
+User Upload (PDF)
+  ↓
+PDFProcessor.convert_to_images()
+  ↓ (pdf2image + poppler)
+Image Sequence
+  ↓
+DataExtractor.match_templates()
+  ├─ Tries NTUH template (confidence ≥ 0.85) → SUCCESS
+  ├─ Tries TVGH template (confidence ≥ 0.85)
+  └─ Tries Generic template (confidence ≥ 0.85)
+  ↓ (if no match)
+OCREngine.extract_text()
+  ↓ (paddleocr)
+Raw Text
+  ↓
+LLMParser.parse_structured()
+  ↓ (Gemini + structured prompt)
+Extracted Data (confidence score)
+  ↓ (confidence ≥ 0.85?)
+Return to Analyst Agent
+```
+
+### Template System
+
+#### Hospital Template Structure (example: NTUH)
+
+```python
+# src/parsers/templates/ntuh_template.py
+class NTUHTemplate:
+    """National Taiwan University Hospital report format."""
+
+    # Header pattern to detect format
+    HEADER_PATTERN = r"National Taiwan University Hospital|NTUH"
+    CONFIDENCE_THRESHOLD = 0.85
+
+    # Field extraction patterns
+    PATTERNS = {
+        "total_cholesterol": r"Total Cholesterol[:\s]+(\d+)",
+        "hdl": r"HDL[:\s]+(\d+)",
+        "ldl": r"LDL[:\s]+(\d+)",
+        "triglycerides": r"Triglycerides[:\s]+(\d+)",
+        "blood_pressure": r"BP[:\s]+(\d+)/(\d+)",
+        "fasting_glucose": r"Fasting Glucose[:\s]+(\d+)",
+        "hba1c": r"HbA1c[:\s]+([\d.]+)",
+    }
+
+    @classmethod
+    def match(cls, text: str) -> Tuple[bool, float, Dict[str, Any]]:
+        """
+        Match template to text and extract data.
+
+        Returns:
+            (is_match, confidence_score, extracted_data)
+        """
+        pass
+```
+
+### Adding New Hospital Templates
+
+#### Step 1: Create template file
+
+```python
+# src/parsers/templates/my_hospital_template.py
+from typing import Tuple, Dict, Any
+import re
+
+class MyHospitalTemplate:
+    """My Hospital report format."""
+
+    HEADER_PATTERN = r"My Hospital|MH"
+    CONFIDENCE_THRESHOLD = 0.85
+
+    PATTERNS = {
+        "total_cholesterol": r"Cholesterol[:\s]+(\d+)",
+        "blood_pressure": r"BP[:\s]+(\d+)/(\d+)",
+        # Add more patterns...
+    }
+
+    @classmethod
+    def match(cls, text: str) -> Tuple[bool, float, Dict[str, Any]]:
+        # Check if header pattern matches
+        if not re.search(cls.HEADER_PATTERN, text):
+            return False, 0.0, {}
+
+        # Extract fields using patterns
+        extracted = {}
+        matches_found = 0
+
+        for field, pattern in cls.PATTERNS.items():
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                extracted[field] = match.group(1)
+                matches_found += 1
+
+        # Calculate confidence
+        confidence = matches_found / len(cls.PATTERNS)
+        is_match = confidence >= cls.CONFIDENCE_THRESHOLD
+
+        return is_match, confidence, extracted
+```
+
+#### Step 2: Register template in DataExtractor
+
+```python
+# src/parsers/data_extractor.py
+from parsers.templates import (
+    NTUHTemplate,
+    TVGHTemplate,
+    MyHospitalTemplate,  # Add import
+    GenericTemplate
+)
+
+class DataExtractor:
+    TEMPLATES = [
+        NTUHTemplate,
+        TVGHTemplate,
+        MyHospitalTemplate,  # Register
+        GenericTemplate
+    ]
+
+    @classmethod
+    def match_templates(cls, text: str) -> Tuple[str, float, Dict]:
+        """Try templates in order until match found."""
+        for template in cls.TEMPLATES:
+            is_match, confidence, data = template.match(text)
+            if is_match:
+                return template.__name__, confidence, data
+
+        # No template matched - return generic match
+        return "unknown", 0.0, {}
+```
+
+#### Step 3: Test the template
+
+```bash
+pytest tests/unit/parsers/test_my_hospital_template.py -v
+```
+
+### OCR Fallback Strategy
+
+**When used**: Template matching confidence < 0.85 OR no template matches
+
+**Process**:
+
+1. PDFProcessor converts PDF to images
+2. OCREngine runs PaddleOCR on all pages
+3. Text combined into single document
+4. LLMParser uses Gemini to extract structured health data
+
+**LLMParser Prompt** (resources/prompts/llm_parser_prompt.txt):
+
+```
+Extract structured health metrics from this OCR text.
+
+Requirements:
+1. Return JSON with fields: total_cholesterol, hdl, ldl, blood_pressure, fasting_glucose, hba1c
+2. If value not found, return null
+3. Include confidence score (0-1) for entire extraction
+4. List any uncertain fields in "uncertain_fields" array
+
+OCR Text:
+{ocr_text}
+
+Return JSON only:
+{
+  "total_cholesterol": number or null,
+  "hdl": number or null,
+  ...
+  "confidence": 0.75,
+  "uncertain_fields": ["field_name"]
+}
+```
+
+**Confidence Thresholds**:
+
+- ≥ 0.85: Auto-use extracted data
+- 0.70-0.84: LLM requests manual verification before proceeding
+- < 0.70: Reject extraction, ask user to manually enter data
+
+### Integration with ReportAnalystAgent
+
+**Modified analyst_prompt.txt**:
+
+```
+## Data Source
+{data_source}
+
+## Extraction Method
+{parsing_method}  # "template_match" | "ocr_fallback" | "manual_input"
+
+## Extraction Confidence
+{extraction_confidence}  # 0-1 score
+
+## Raw Health Data
+{health_report}
+```
+
+**Modified HealthReportRequest Pydantic model**:
+
+```python
+class HealthReportRequest(BaseModel):
+    # Direct input
+    health_report: Optional[Dict] = None
+
+    # PDF upload (new)
+    pdf_file: Optional[UploadFile] = None
+
+    user_profile: Optional[Dict] = None
+
+    # System will auto-parse PDF and populate health_report
+```
+
+### Performance Considerations
+
+- **PDF Size Limit**: 20MB max (prevents memory issues)
+- **Timeout**: 30 seconds for OCR + LLM fallback
+- **Caching**: Store parsed PDFs in `output/parsed_pdfs/` for audit trail
+- **Model Caching**: PaddleOCR models cached locally (~500MB disk)
+
+### Testing Strategy
+
+```python
+# tests/unit/parsers/test_template_system.py
+def test_ntuh_template_extraction():
+    """Test NTUH template pattern matching."""
+    text = """
+    National Taiwan University Hospital
+    Total Cholesterol: 240 mg/dL
+    HDL: 35 mg/dL
+    """
+    is_match, confidence, data = NTUHTemplate.match(text)
+    assert is_match
+    assert confidence >= 0.85
+    assert data["total_cholesterol"] == "240"
+
+# tests/unit/parsers/test_ocr_fallback.py
+def test_ocr_fallback_confidence():
+    """Test OCR fallback confidence calculation."""
+    ocr_text = "Cholesterol 250 Blood Pressure 140/90"
+    result = OCREngine.extract_health_metrics(ocr_text)
+    assert 0.5 <= result.confidence <= 1.0
+
+# tests/integration/test_pdf_upload_flow.py
+def test_pdf_upload_end_to_end(sample_pdf_path):
+    """Test full PDF → extraction → plan generation."""
+    response = client.post(
+        "/api/v1/upload_report",
+        files={"file": open(sample_pdf_path, "rb")}
+    )
+    assert response.status_code == 200
+    assert "extracted_data" in response.json()
+    assert "parsing_method" in response.json()
+```
 
 ---
 
