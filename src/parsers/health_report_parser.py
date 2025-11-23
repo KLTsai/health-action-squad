@@ -27,6 +27,7 @@ from PIL import Image
 from ..utils.logger import get_logger, AgentLogger
 from ..common.config import Config
 from .llm_fallback import GeminiStructuredExtractor
+from .image_preprocessor import MobilePhotoOptimizer
 
 logger = get_logger(__name__)
 agent_logger = AgentLogger("HealthReportParser")
@@ -70,6 +71,7 @@ class HealthReportParser:
         self,
         min_completeness_threshold: float = 0.7,
         use_llm_fallback: bool = True,
+        preprocess_images: bool = True,
         session_id: Optional[str] = None,
     ):
         """Initialize health report parser.
@@ -78,12 +80,15 @@ class HealthReportParser:
             min_completeness_threshold: Minimum completeness score (0.0-1.0)
                 to skip LLM fallback (default: 0.7)
             use_llm_fallback: Whether to use LLM for incomplete data (default: True)
+            preprocess_images: Whether to preprocess images for mobile photo quality (default: True)
             session_id: Optional session ID for logging context
         """
         self.min_completeness_threshold = min_completeness_threshold
         self.use_llm_fallback = use_llm_fallback
+        self.preprocess_images = preprocess_images
         self.session_id = session_id
         self.llm_extractor = GeminiStructuredExtractor(session_id=session_id)
+        self.image_preprocessor = MobilePhotoOptimizer() if preprocess_images else None
 
         if session_id:
             agent_logger.set_session(session_id)
@@ -345,27 +350,34 @@ class HealthReportParser:
             if file_type == FileType.UNKNOWN:
                 raise ValueError(f"Unsupported file type: {file_path}")
 
-            # Step 2: Load file and convert to images
+            # Step 2: Preprocess image for mobile photo quality (if enabled)
+            processed_file_path = file_path
+            if self.preprocess_images and file_type in (FileType.JPG, FileType.JPEG, FileType.PNG):
+                agent_logger.info("Preprocessing mobile photo for OCR optimization")
+                processed_file_path = self.image_preprocessor.preprocess(file_path)
+                agent_logger.info("Image preprocessing completed", output=processed_file_path)
+
+            # Step 3: Load file and convert to images
             if file_type == FileType.PDF:
                 images = self._pdf_to_images(file_path)
             elif file_type in (FileType.JPG, FileType.JPEG, FileType.PNG):
-                images = [self._load_image(file_path)]
+                images = [self._load_image(processed_file_path)]
             else:
                 raise ValueError(f"File type not handled: {file_type}")
 
-            # Step 3: Extract data using OCR
+            # Step 4: Extract data using OCR
             ocr_data, ocr_completeness = self._extract_from_ocr(images)
             agent_logger.info(
                 "OCR extraction completed",
                 completeness=ocr_completeness,
             )
 
-            # Step 4: Check completeness
+            # Step 5: Check completeness
             completeness = self._check_completeness(ocr_data)
             source = "ocr"
             final_data = ocr_data
 
-            # Step 5: LLM fallback if incomplete
+            # Step 6: LLM fallback if incomplete
             if (
                 use_llm_fallback
                 and completeness < self.min_completeness_threshold

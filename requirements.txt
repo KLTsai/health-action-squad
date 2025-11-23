@@ -18,6 +18,10 @@ pdf2image>=1.16.0
 paddlepaddle>=2.5.0
 Pillow>=10.0.0
 
+# Image preprocessing for mobile photos
+opencv-python>=4.8.0
+numpy>=1.24.0
+
 # Testing
 pytest>=7.4.0
 pytest-asyncio>=0.21.0
