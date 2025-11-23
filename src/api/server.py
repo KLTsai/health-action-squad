@@ -546,12 +546,25 @@ async def upload_report(
                 user_profile=user_profile if user_profile else None,
             )
 
+            # Log workflow result details for debugging
             logger.info(
                 "Plan generation completed",
                 session_id=result.get("session_id"),
                 status=result.get("status"),
                 iterations=result.get("iterations", 1),
+                workflow_type=result.get("workflow_type"),
+                has_error=bool(result.get("error")),
+                error_msg=result.get("error", "")[:100] if result.get("error") else None,
             )
+
+            # Warn if fallback mode was triggered
+            if result.get("status") == "fallback":
+                logger.warning(
+                    "Workflow entered fallback mode",
+                    session_id=result.get("session_id"),
+                    error=result.get("error"),
+                    message=result.get("message"),
+                )
 
             # Step 7: Format response with parsed data preview and upload stats
             response = ParsedReportResponse(

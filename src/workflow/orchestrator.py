@@ -236,7 +236,7 @@ class Orchestrator:
             "status": "fallback",
             "plan": fallback_plan,
             "risk_tags": [],
-            "iterations": 0,
+            "iterations": 1,  # Changed from 0 to 1 to satisfy Pydantic validation (ge=1)
             "health_analysis": {},
             "validation_result": {},
             "message": "Unable to generate personalized plan. Providing safe general recommendations.",
