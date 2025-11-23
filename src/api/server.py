@@ -18,7 +18,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.workflow.orchestrator import Orchestrator
 from src.common.config import Config
 from src.utils.logger import get_logger
-from src.ai.parser import HealthReportParser
+from src.parsers import HealthReportParser as OCRParser
+from src.ai.parser import HealthReportParser as LegacyParser
 from .models import (
     HealthReportRequest,
     PlanGenerationResponse,
@@ -332,8 +333,8 @@ async def upload_report(
                 file_size=len(file_content),
             )
 
-            # Step 2: Validate file
-            validation_result = HealthReportParser.validate_file(temp_path)
+            # Step 2: Validate file (basic checks)
+            validation_result = LegacyParser.validate_file(temp_path)
             if not validation_result["valid"]:
                 logger.warning(
                     "File validation failed",
@@ -348,21 +349,42 @@ async def upload_report(
                     ).model_dump(),
                 )
 
-            # Step 3: Parse health report from file
-            parsed_result = await HealthReportParser.parse_report(temp_path)
-            if not parsed_result["parsed_successfully"]:
+            # Step 3: Parse health report using OCR parser
+            parser = OCRParser(
+                min_completeness_threshold=0.7,
+                use_llm_fallback=True,
+                preprocess_images=True,
+                session_id=None
+            )
+
+            parsed_result = await parser.parse(str(temp_path))
+
+            # Check if parsing succeeded
+            if "error" in parsed_result:
                 logger.warning(
-                    "File parsing failed",
-                    error=parsed_result["error"],
+                    "OCR parsing failed",
+                    error=parsed_result.get("error"),
                 )
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=ErrorResponse(
                         error="FileParsingError",
-                        detail=parsed_result["error"],
+                        detail=parsed_result.get("error", "Failed to parse health report"),
                         timestamp=datetime.utcnow().isoformat(),
                     ).model_dump(),
                 )
+
+            # Extract parsed data
+            extracted_metrics = parsed_result.get("data", {})
+            parsing_completeness = parsed_result.get("completeness", 0.0)
+            parsing_source = parsed_result.get("source", "unknown")
+
+            logger.info(
+                "OCR parsing completed",
+                completeness=parsing_completeness,
+                source=parsing_source,
+                fields_extracted=len(extracted_metrics),
+            )
 
             # Step 4: Prepare user profile from form fields
             user_profile = {}
@@ -400,8 +422,7 @@ async def upload_report(
                     ]
 
             # Step 5: Merge parsed data with user input
-            extracted_metrics = parsed_result.get("extracted_metrics", {})
-            merged_health_report = HealthReportParser.merge_parsed_with_user_input(
+            merged_health_report = LegacyParser.merge_parsed_with_user_input(
                 extracted_metrics, user_profile if user_profile else None
             )
 
