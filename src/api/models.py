@@ -4,8 +4,9 @@ This module defines all request and response models for the Health Action Squad 
 All models use Pydantic v2 for validation and serialization.
 """
 
+import json
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from pydantic import BaseModel, Field, ConfigDict
 
 
@@ -228,6 +229,168 @@ class HealthCheckResponse(BaseModel):
                 "timestamp": "2025-11-21T10:30:00.000000",
                 "model": "gemini-2.5-flash",
                 "uptime_seconds": 3600.5,
+            }
+        }
+    )
+
+
+class UploadReportRequest(BaseModel):
+    """Request model for file upload with optional user profile data.
+
+    Attributes:
+        age: Optional user age in years
+        gender: Optional user gender
+        dietary_restrictions: Optional dietary restrictions (JSON string or list)
+        health_goal: Optional primary health goal
+        exercise_barriers: Optional exercise barriers (JSON string or list)
+    """
+
+    age: Optional[int] = Field(
+        default=None,
+        description="User age in years",
+        ge=0,
+        le=150,
+        example=45,
+    )
+
+    gender: Optional[str] = Field(
+        default=None,
+        description="User gender (male/female/other)",
+        example="male",
+        pattern="^(male|female|other)$",
+    )
+
+    dietary_restrictions: Optional[str] = Field(
+        default=None,
+        description="Dietary restrictions as JSON string or comma-separated list",
+        example='["no_red_meat", "gluten_free"]',
+    )
+
+    health_goal: Optional[str] = Field(
+        default=None,
+        description="Primary health goal",
+        example="Lower cholesterol and lose weight",
+    )
+
+    exercise_barriers: Optional[str] = Field(
+        default=None,
+        description="Exercise barriers as JSON string or comma-separated list",
+        example='["limited_time", "joint_pain"]',
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "age": 45,
+                "gender": "male",
+                "dietary_restrictions": '["no_red_meat", "gluten_free"]',
+                "health_goal": "Lower cholesterol and lose weight",
+                "exercise_barriers": '["limited_time"]',
+            }
+        }
+    )
+
+
+class ParsedReportResponse(BaseModel):
+    """Response model for parsed health report with generated plan.
+
+    Attributes:
+        session_id: Unique session identifier
+        status: Workflow status (approved, fallback, etc.)
+        plan: Generated lifestyle plan in Markdown format
+        parsed_data: Preview of parsed health data from uploaded file
+        risk_tags: List of identified risk tags
+        iterations: Number of planner-guard iterations performed
+        timestamp: ISO timestamp of processing
+        health_analysis: Optional health analysis from analyst agent
+        validation_result: Optional validation result from guard agent
+        message: Optional informational message
+    """
+
+    session_id: str = Field(
+        ..., description="Unique session identifier for tracking"
+    )
+
+    status: str = Field(
+        ...,
+        description="Workflow status (approved, fallback, etc.)",
+        example="approved",
+    )
+
+    plan: str = Field(
+        ..., description="Generated lifestyle plan in Markdown format"
+    )
+
+    parsed_data: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Preview of parsed data from uploaded health report",
+        example={
+            "total_cholesterol": 220,
+            "ldl_cholesterol": 150,
+            "hdl_cholesterol": 40,
+            "blood_pressure": "140/90",
+            "fasting_glucose": 110,
+            "bmi": 28.5,
+        },
+    )
+
+    risk_tags: List[str] = Field(
+        default_factory=list,
+        description="List of identified risk tags",
+        example=["high_cholesterol", "elevated_blood_pressure", "overweight"],
+    )
+
+    iterations: int = Field(
+        default=1,
+        description="Number of planner-guard iterations performed",
+        ge=1,
+        le=3,
+    )
+
+    timestamp: str = Field(
+        ..., description="ISO timestamp of plan generation"
+    )
+
+    health_analysis: Optional[Dict] = Field(
+        default=None,
+        description="Health analysis from analyst agent",
+    )
+
+    validation_result: Optional[Dict] = Field(
+        default=None,
+        description="Validation result from guard agent",
+    )
+
+    message: Optional[str] = Field(
+        default=None,
+        description="Optional informational message",
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "session_id": "550e8400-e29b-41d4-a716-446655440000",
+                "status": "approved",
+                "plan": "# Personalized Health Plan\n\n## Overview\n...",
+                "parsed_data": {
+                    "total_cholesterol": 220,
+                    "ldl_cholesterol": 150,
+                    "hdl_cholesterol": 40,
+                    "blood_pressure": "140/90",
+                    "fasting_glucose": 110,
+                    "bmi": 28.5,
+                },
+                "risk_tags": ["high_cholesterol", "elevated_blood_pressure"],
+                "iterations": 1,
+                "timestamp": "2025-11-21T10:30:00.000000",
+                "health_analysis": {
+                    "summary": "Analysis complete",
+                    "key_findings": ["Elevated LDL cholesterol"],
+                },
+                "validation_result": {
+                    "decision": "APPROVE",
+                    "feedback": "Plan meets all safety criteria",
+                },
             }
         }
     )
