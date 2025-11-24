@@ -188,15 +188,6 @@ class HealthReportParser:
             Tuple of (extracted_data, completeness_score)
             - extracted_data: Dict with health metrics
             - completeness_score: Float between 0.0 and 1.0
-
-        Note:
-            This is a placeholder implementation. In production, this would
-            use PaddleOCR for actual text extraction:
-            ```python
-            from paddleocr import PaddleOCR
-            ocr = PaddleOCR(use_angle_cls=True, lang='ch')
-            results = ocr.ocr(image, cls=True)
-            ```
         """
         agent_logger.info(
             "Extracting data from OCR",
@@ -204,17 +195,101 @@ class HealthReportParser:
             action="extract_from_ocr",
         )
 
-        # Placeholder: In production, integrate actual PaddleOCR
-        # For now, return empty dict with 0% completeness
-        extracted_data = {}
-        completeness_score = 0.0
+        # Use PaddleOCRHealthReportParser for actual OCR extraction
+        try:
+            from .paddle_ocr_parser import PaddleOCRHealthReportParser
+            import tempfile
+            import asyncio
 
-        agent_logger.info(
-            "OCR extraction complete",
-            page_count=len(images),
-            completeness=completeness_score,
-        )
-        return extracted_data, completeness_score
+            # Create temporary directory for image files
+            with tempfile.TemporaryDirectory() as temp_dir:
+                extracted_data = {}
+                all_vital_signs = {}
+                patient_info = {}
+
+                # Save images and process with PaddleOCR
+                for idx, img in enumerate(images):
+                    # Save PIL Image to temporary file
+                    temp_img_path = Path(temp_dir) / f"page_{idx}.jpg"
+                    img.save(str(temp_img_path), format="JPEG")
+
+                    # Run OCR parser synchronously (PaddleOCR is not async)
+                    parser = PaddleOCRHealthReportParser(language="ch_tra", device="cpu")
+
+                    # Parse synchronously (we're already in a thread pool via asyncio.to_thread)
+                    # Create event loop for async parse if needed
+                    try:
+                        loop = asyncio.get_event_loop()
+                    except RuntimeError:
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+
+                    parsed_report = loop.run_until_complete(parser.parse(str(temp_img_path)))
+
+                    # Merge patient info (keep first non-empty value)
+                    if parsed_report.patient_info and not patient_info:
+                        patient_info = parsed_report.patient_info
+
+                    # Merge vital signs from all pages
+                    for metric_name, metric_obj in parsed_report.vital_signs.items():
+                        all_vital_signs[metric_name] = metric_obj
+
+                # Convert vital signs to flat dictionary
+                for metric_name, metric_obj in all_vital_signs.items():
+                    extracted_data[metric_name] = metric_obj.value
+
+                # Add patient info fields
+                if "bmi" in patient_info:
+                    extracted_data["bmi"] = patient_info["bmi"]
+                if "weight_kg" in patient_info:
+                    extracted_data["weight"] = patient_info["weight_kg"]
+                if "height_cm" in patient_info:
+                    extracted_data["height"] = patient_info["height_cm"]
+
+                # Calculate completeness based on extracted fields
+                required_fields = {
+                    "blood_pressure", "cholesterol", "glucose", "bmi",
+                    "heart_rate", "temperature", "oxygen_saturation"
+                }
+
+                # Map PaddleOCR field names to required fields
+                field_mapping = {
+                    "systolic_bp": "blood_pressure",
+                    "total_cholesterol": "cholesterol",
+                    "fasting_glucose": "glucose",
+                }
+
+                present_count = 0
+                for req_field in required_fields:
+                    # Check direct match or mapped field
+                    if req_field in extracted_data:
+                        present_count += 1
+                    elif req_field in field_mapping.values():
+                        # Check if any mapped field exists
+                        for ocr_field, mapped in field_mapping.items():
+                            if mapped == req_field and ocr_field in extracted_data:
+                                present_count += 1
+                                break
+
+                completeness_score = present_count / len(required_fields) if required_fields else 0.0
+
+                agent_logger.info(
+                    "OCR extraction complete",
+                    page_count=len(images),
+                    completeness=completeness_score,
+                    fields_extracted=len(extracted_data),
+                )
+
+                return extracted_data, completeness_score
+
+        except Exception as e:
+            agent_logger.error(
+                "OCR extraction failed",
+                error=str(e),
+                page_count=len(images),
+            )
+            # Fallback to empty result
+            return {}, 0.0
 
     def _check_completeness(self, data: Dict) -> float:
         """Check data completeness by counting present fields.

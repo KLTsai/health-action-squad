@@ -18,7 +18,7 @@ import uuid
 from datetime import datetime
 import json
 
-from google.adk.agents import SequentialAgent, LoopAgent
+from google.adk.agents import SequentialAgent, LoopAgent, InvocationContext
 
 from ..domain.state import MAX_RETRIES  # SessionState/WorkflowStatus not used in ADK workflow
 from ..common.config import Config
@@ -123,18 +123,22 @@ class Orchestrator:
 
         try:
             # Prepare initial state for ADK workflow
-            initial_state = {
+            # ADK requires InvocationContext, not plain dict
+            initial_state_dict = {
                 "session_id": session_id,
                 "timestamp": timestamp,
                 "user_profile": user_profile or {},
                 "health_report": health_report,  # For Analyst to process
             }
 
+            # Create InvocationContext from dict
+            context = InvocationContext(**initial_state_dict)
+
             # Execute ADK workflow (SequentialAgent handles orchestration)
             # IMPORTANT: run_async() returns an async generator, not an awaitable
             # We must consume the generator to execute the workflow
             final_result = None
-            async for event in self.workflow.run_async(initial_state):
+            async for event in self.workflow.run_async(context):
                 # ADK emits events during execution
                 # The final event contains the complete workflow result
                 if hasattr(event, 'is_final_response') and event.is_final_response():
