@@ -107,3 +107,6 @@ dmypy.json
 
 # ADK specific
 .adk_cache/
+
+# Images
+*.jpg
