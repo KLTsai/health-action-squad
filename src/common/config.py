@@ -32,7 +32,6 @@ class Config:
 
     # API Keys
     # Note: GOOGLE_API_KEY is kept for backwards compatibility but not currently used
-    GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "")
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
 
     # Model configuration
@@ -82,9 +81,9 @@ class Config:
         Raises:
             ValueError: If required configuration is missing
         """
-        if not cls.GOOGLE_API_KEY and not cls.GEMINI_API_KEY:
+        if not cls.GEMINI_API_KEY:
             raise ValueError(
-                "GOOGLE_API_KEY or GEMINI_API_KEY must be set in environment variables"
+                "GEMINI_API_KEY must be set in environment variables"
             )
 
         # Ensure required directories exist
