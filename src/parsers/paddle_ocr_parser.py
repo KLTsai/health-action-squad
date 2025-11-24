@@ -113,7 +113,7 @@ class PaddleOCRHealthReportParser:
             self.ocr = PaddleOCR(
                 use_textline_orientation=True,  # Updated from deprecated use_angle_cls
                 lang=language,
-                use_gpu=(device == "gpu"),
+                # Note: PaddleOCR 3.x+ uses CPU by default, no use_gpu parameter needed
             )
             self.logger.info("PaddleOCR initialized", language=language, device=device)
         except Exception as e:
