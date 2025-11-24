@@ -2,7 +2,12 @@
 
 import asyncio
 import sys
+import io
 from pathlib import Path
+
+# Fix Windows console encoding for emoji support
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent))

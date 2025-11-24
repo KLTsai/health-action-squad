@@ -214,7 +214,8 @@ class HealthReportParser:
                     img.save(str(temp_img_path), format="JPEG")
 
                     # Run OCR parser synchronously (PaddleOCR is not async)
-                    parser = PaddleOCRHealthReportParser(language="ch_tra", device="cpu")
+                    # Use 'chinese_cht' for Traditional Chinese + English (台灣健康報告混合語言)
+                    parser = PaddleOCRHealthReportParser(language="chinese_cht", device="cpu")
 
                     # Parse synchronously (we're already in a thread pool via asyncio.to_thread)
                     # Create event loop for async parse if needed

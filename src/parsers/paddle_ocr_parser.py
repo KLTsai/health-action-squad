@@ -90,23 +90,28 @@ class PaddleOCRHealthReportParser:
     # 初始化與配置 (Initialization & Configuration)
     # ========================================================================
 
-    def __init__(self, language: str = "ch_tra", device: str = "cpu"):
+    def __init__(self, language: str = "chinese_cht", device: str = "cpu"):
         """初始化PaddleOCR解析器
 
-        Initialize PaddleOCR parser with Traditional Chinese support.
+        Initialize PaddleOCR parser with Traditional Chinese & English support.
 
         Args:
-            language: OCR語言設置 ('ch_tra' for Traditional Chinese, 'en' for English)
+            language: OCR語言設置 ('chinese_cht' for Traditional Chinese + English,
+                                  'ch' for Simplified Chinese, 'en' for English only)
             device: 運算設備 ('cpu' or 'gpu')
+
+        Note:
+            'chinese_cht' model can recognize Traditional Chinese, English, and numbers.
+            This is ideal for Taiwan health reports which mix Chinese and English.
         """
         self.language = language
         self.device = device
         self.logger = AgentLogger("PaddleOCRParser")
 
-        # 初始化PaddleOCR (Traditional Chinese)
+        # 初始化PaddleOCR (Traditional Chinese + English)
         try:
             self.ocr = PaddleOCR(
-                use_angle_cls=True,
+                use_textline_orientation=True,  # Updated from deprecated use_angle_cls
                 lang=language,
                 use_gpu=(device == "gpu"),
             )
