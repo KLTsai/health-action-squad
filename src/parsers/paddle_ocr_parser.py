@@ -235,8 +235,8 @@ class PaddleOCRHealthReportParser:
                     height=img.size[1],
                 )
 
-            # 執行OCR
-            result = self.ocr.ocr(image_path, cls=True)
+            # 執行OCR (新版 PaddleOCR 使用 predict() 方法)
+            result = self.ocr.predict(image_path)
             return result
 
         except Exception as e:
