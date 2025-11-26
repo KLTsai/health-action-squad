@@ -12,6 +12,11 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
+# ADK requires GOOGLE_API_KEY environment variable
+# Set it from GEMINI_API_KEY if not already set
+if "GOOGLE_API_KEY" not in os.environ and "GEMINI_API_KEY" in os.environ:
+    os.environ["GOOGLE_API_KEY"] = os.environ["GEMINI_API_KEY"]
+
 
 class Config:
     """Application configuration.

@@ -95,7 +95,11 @@ Return your analysis in the following JSON structure:
 
 ## Input Format
 
-You will receive a health report as JSON.
+You will receive a health report as JSON:
+
+{health_report}
+
+Analyze the above health report data and extract all available health metrics.
 
 ## Structured Output Requirements
 

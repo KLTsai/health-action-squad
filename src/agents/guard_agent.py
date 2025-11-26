@@ -16,6 +16,7 @@ import yaml
 from google.adk.agents import LlmAgent
 from google.adk.tools.exit_loop_tool import exit_loop
 from google.adk.tools import FunctionTool
+from google.adk.models import Gemini
 
 from ..ai import load_prompt
 from ..common.config import Config
@@ -55,6 +56,9 @@ class SafetyGuardAgent:
         # Load safety rules from YAML
         safety_rules = SafetyGuardAgent._load_safety_rules()
 
+        # Create ADK Gemini model instance
+        gemini_model = Gemini(model=model_name)
+
         logger.info(
             "SafetyGuard agent created",
             model=model_name,
@@ -70,9 +74,10 @@ class SafetyGuardAgent:
             f"```yaml\n{safety_rules_yaml}```"
         )
 
+        # ADK LlmAgent with Gemini model
         return LlmAgent(
             name="SafetyGuard",
-            model=model_name,
+            model=gemini_model,
             instruction=enhanced_prompt,
             output_key="validation_result",
             tools=[FunctionTool(exit_loop)],  # Use ADK's built-in exit_loop tool

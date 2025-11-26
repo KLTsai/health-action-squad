@@ -19,6 +19,8 @@ from datetime import datetime
 import json
 
 from google.adk.agents import SequentialAgent, LoopAgent, InvocationContext
+from google.adk.sessions import InMemorySessionService
+from google.adk.runners import RunConfig
 
 from ..domain.state import MAX_RETRIES  # SessionState/WorkflowStatus not used in ADK workflow
 from ..common.config import Config
@@ -88,6 +90,9 @@ class Orchestrator:
             description="Health report analysis → lifestyle plan generation with safety validation"
         )
 
+        # Create session service for ADK execution
+        self.session_service = InMemorySessionService()
+
         logger.info(
             "ADK Orchestrator initialized",
             workflow_structure="SequentialAgent[Analyst, LoopAgent[Planner, Guard]]",
@@ -122,62 +127,127 @@ class Orchestrator:
         )
 
         try:
-            # Prepare initial state for ADK workflow
-            # ADK requires InvocationContext, not plain dict
-            initial_state_dict = {
-                "session_id": session_id,
-                "timestamp": timestamp,
+            # Prepare initial state dict with all expected keys
+            # ADK requires all state keys referenced in prompts to be pre-defined
+            initial_state = {
                 "user_profile": user_profile or {},
-                "health_report": health_report,  # For Analyst to process
+                "health_report": health_report,
+                "health_analysis": None,  # Will be populated by ReportAnalyst
+                "current_plan": None,  # Will be populated by LifestylePlanner
+                "validation_result": None,  # Will be populated by SafetyGuard
             }
 
-            # Create InvocationContext from dict
-            context = InvocationContext(**initial_state_dict)
+            self.logger.info(
+                "ADK Workflow executing with InvocationContext",
+                extra={
+                    "session_id": session_id,
+                    "initial_state_keys": list(initial_state.keys())
+                }
+            )
 
-            # Execute ADK workflow (SequentialAgent handles orchestration)
-            # IMPORTANT: run_async() returns an async generator, not an awaitable
-            # We must consume the generator to execute the workflow
-            final_result = None
+            # Debug logging for initial state
+            self.logger.debug(
+                "Initial state prepared",
+                extra={
+                    "session_id": session_id,
+                    "health_report_keys": list(health_report.keys()) if health_report else [],
+                    "user_profile_keys": list(user_profile.keys()) if user_profile else []
+                }
+            )
+
+            # Create session using SessionService (not manual Session construction)
+            # This ensures proper session management and state persistence
+            invocation_id = str(uuid.uuid4())
+            user_id = "default_user"
+            app_name = "health_action_squad"
+
+            # Create session via session service
+            session = await self.session_service.create_session(
+                app_name=app_name,
+                user_id=user_id,
+                session_id=session_id,
+                state=initial_state
+            )
+
+            # Create RunConfig for the workflow
+            run_config = RunConfig()
+
+            # Create InvocationContext for workflow execution
+            context = InvocationContext(
+                session_service=self.session_service,
+                invocation_id=invocation_id,
+                agent=self.workflow,
+                session=session,
+                run_config=run_config
+            )
+
+            # Execute workflow using direct run_async() call
+            # Collect outputs from events by author
+            agent_outputs = {}
+
             async for event in self.workflow.run_async(context):
-                # ADK emits events during execution
-                # The final event contains the complete workflow result
-                if hasattr(event, 'is_final_response') and event.is_final_response():
-                    final_result = event
-                    break
-                # For non-final events, we can access them as dictionaries
-                elif isinstance(event, dict):
-                    final_result = event
+                # Extract content from events
+                if hasattr(event, 'author') and hasattr(event, 'content') and event.content:
+                    author = event.author
+                    # Extract text from content parts
+                    if hasattr(event.content, 'parts') and event.content.parts:
+                        for part in event.content.parts:
+                            if hasattr(part, 'text') and part.text:
+                                # Map agent author to output key
+                                if author == "ReportAnalyst":
+                                    agent_outputs["health_analysis"] = part.text
+                                elif author == "LifestylePlanner":
+                                    agent_outputs["current_plan"] = part.text
+                                elif author == "SafetyGuard":
+                                    agent_outputs["validation_result"] = part.text
 
-            # If no final result captured, use the last event
-            if final_result is None:
-                self.logger.warning(
-                    "No final response detected, using last event",
-                    extra={"session_id": session_id}
+                self.logger.debug(
+                    "ADK Event received",
+                    extra={
+                        "event_type": type(event).__name__,
+                        "session_id": session_id,
+                        "author": event.author if hasattr(event, 'author') else None
+                    }
                 )
-                final_result = event if 'event' in locals() else {}
 
-            # ADK automatically manages state flow through output_keys:
-            # - Analyst outputs to "health_analysis"
-            # - Planner outputs to "current_plan"
-            # - Guard outputs to "validation_result"
+            # Combine initial state with agent outputs
+            final_state = {**initial_state, **agent_outputs}
+
+            # Debug logging for final state
+            self.logger.debug(
+                "Final state received",
+                extra={
+                    "session_id": session_id,
+                    "state_keys": list(final_state.keys()) if isinstance(final_state, dict) else [],
+                    "health_analysis_present": "health_analysis" in final_state if isinstance(final_state, dict) else False,
+                    "current_plan_present": "current_plan" in final_state if isinstance(final_state, dict) else False,
+                    "current_plan_value": final_state.get("current_plan", "NOT_FOUND")[:100] if isinstance(final_state.get("current_plan"), str) else str(type(final_state.get("current_plan")))
+                }
+            )
 
             self.logger.info(
                 "ADK Workflow completed",
                 extra={
                     "session_id": session_id,
-                    "workflow_status": "success"
+                    "workflow_status": "success",
+                    "final_state_keys": list(final_state.keys()) if isinstance(final_state, dict) else [],
+                    "health_analysis_type": str(type(final_state.get("health_analysis"))),
+                    "current_plan_type": str(type(final_state.get("current_plan"))),
+                    "current_plan_sample": str(final_state.get("current_plan"))[:200] if final_state.get("current_plan") else "None"
                 }
             )
 
-            return self._format_adk_output(final_result, session_id, timestamp)
+            return self._format_adk_output(final_state, session_id, timestamp)
 
         except Exception as e:
+            import traceback
             self.logger.error(
                 "ADK Workflow failed",
                 extra={
                     "session_id": session_id,
                     "error": str(e),
-                    "error_type": type(e).__name__
+                    "error_type": type(e).__name__,
+                    "traceback": traceback.format_exc()
                 },
             )
             # Return fallback result
@@ -193,7 +263,24 @@ class Orchestrator:
 
         Returns:
             Formatted output dictionary with all required fields
+
+        Raises:
+            ValueError: If workflow result is missing required output keys
         """
+        # Validate required output keys exist
+        required_keys = ["health_analysis", "current_plan", "validation_result"]
+        missing_keys = [k for k in required_keys if k not in adk_result]
+
+        if missing_keys:
+            self.logger.error(
+                "Incomplete workflow result",
+                extra={
+                    "missing_keys": missing_keys,
+                    "available_keys": list(adk_result.keys())
+                }
+            )
+            raise ValueError(f"Workflow missing required outputs: {missing_keys}")
+
         # Extract health analysis and validation results
         health_analysis = adk_result.get("health_analysis", {})
         validation_result = adk_result.get("validation_result", {})

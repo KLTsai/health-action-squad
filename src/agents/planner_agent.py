@@ -14,6 +14,7 @@ Logging:
 """
 
 from google.adk.agents import LlmAgent
+from google.adk.models import Gemini
 
 from ..ai import load_prompt
 from ..utils.logger import get_logger
@@ -46,6 +47,9 @@ class LifestylePlannerAgent:
         # Load system prompt from external file
         system_prompt = load_prompt("planner_prompt")
 
+        # Create ADK Gemini model instance
+        gemini_model = Gemini(model=model_name)
+
         logger.info(
             "LifestylePlanner agent created",
             model=model_name,
@@ -54,9 +58,10 @@ class LifestylePlannerAgent:
             state_injection_fields=["health_analysis", "user_profile", "validation_result"]
         )
 
+        # ADK LlmAgent with Gemini model
         return LlmAgent(
             name="LifestylePlanner",
-            model=model_name,
+            model=gemini_model,
             instruction=system_prompt,
             output_key="current_plan",
             description="Generates personalized lifestyle plans from health metrics"

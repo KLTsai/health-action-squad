@@ -8,6 +8,7 @@ Logging:
 """
 
 from google.adk.agents import LlmAgent
+from google.adk.models import Gemini
 
 from ..ai import load_prompt
 from ..utils.logger import get_logger
@@ -41,6 +42,9 @@ class ReportAnalystAgent:
         # Load system prompt from external file
         system_prompt = load_prompt("analyst_prompt")
 
+        # Create ADK Gemini model instance
+        gemini_model = Gemini(model=model_name)
+
         logger.info(
             "ReportAnalyst agent created",
             model=model_name,
@@ -48,9 +52,10 @@ class ReportAnalystAgent:
             description="Parses health reports into structured metrics and risk tags"
         )
 
+        # ADK LlmAgent with Gemini model
         return LlmAgent(
             name="ReportAnalyst",
-            model=model_name,
+            model=gemini_model,
             instruction=system_prompt,
             output_key="health_analysis",
             description="Parses health reports into structured metrics and risk tags"
