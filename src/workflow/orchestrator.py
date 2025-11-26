@@ -25,6 +25,7 @@ from google.adk.runners import RunConfig
 from ..domain.state import MAX_RETRIES  # SessionState/WorkflowStatus not used in ADK workflow
 from ..common.config import Config
 from ..utils.logger import get_logger, AgentLogger
+from ..utils.json_parser import parse_agent_json_output
 from ..agents.analyst_agent import ReportAnalystAgent
 from ..agents.planner_agent import LifestylePlannerAgent
 from ..agents.guard_agent import SafetyGuardAgent
@@ -281,22 +282,22 @@ class Orchestrator:
             )
             raise ValueError(f"Workflow missing required outputs: {missing_keys}")
 
-        # Extract health analysis and validation results
-        health_analysis = adk_result.get("health_analysis", {})
-        validation_result = adk_result.get("validation_result", {})
+        # Extract and parse health analysis (handles markdown-wrapped JSON)
+        health_analysis = parse_agent_json_output(
+            adk_result.get("health_analysis", {}),
+            field_name="health_analysis",
+            fallback_value={}
+        )
 
-        # Extract risk tags from health analysis
-        risk_tags = []
-        if isinstance(health_analysis, dict):
-            risk_tags = health_analysis.get("risk_tags", [])
-        elif isinstance(health_analysis, str):
-            # If health_analysis is JSON string, parse it
-            try:
-                import json
-                parsed = json.loads(health_analysis)
-                risk_tags = parsed.get("risk_tags", [])
-            except (json.JSONDecodeError, AttributeError):
-                risk_tags = []
+        # Extract and parse validation result (handles markdown-wrapped JSON)
+        validation_result = parse_agent_json_output(
+            adk_result.get("validation_result", {}),
+            field_name="validation_result",
+            fallback_value={}
+        )
+
+        # Extract risk_tags from parsed health_analysis
+        risk_tags = health_analysis.get("risk_tags", []) if isinstance(health_analysis, dict) else []
 
         # Determine status based on validation decision
         status = "approved"

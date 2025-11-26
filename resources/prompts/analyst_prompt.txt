@@ -59,9 +59,8 @@ Identify and tag the following risk categories based on clinical guidelines:
 
 ## Output Format
 
-Return your analysis in the following JSON structure:
+Return your analysis as a JSON object (no markdown code blocks, just raw JSON):
 
-```json
 {
   "health_metrics": {
     "cholesterol_total": <number>,
@@ -82,7 +81,8 @@ Return your analysis in the following JSON structure:
     "risk_tag_2"
   ]
 }
-```
+
+IMPORTANT: Return ONLY the JSON object above, without wrapping it in markdown code blocks (```).
 
 ## Important Guidelines
 
@@ -103,8 +103,8 @@ Analyze the above health report data and extract all available health metrics.
 
 ## Structured Output Requirements
 
-You MUST return a JSON object with exactly this structure:
-```json
+You MUST return a JSON object with exactly this structure (raw JSON, no markdown):
+
 {
     "health_metrics": {
         "cholesterol_total": <number>,
@@ -117,7 +117,8 @@ You MUST return a JSON object with exactly this structure:
     },
     "risk_tags": [<list of risk tag strings>]
 }
-```
+
+CRITICAL: Output must be pure JSON without markdown formatting or code block wrappers.
 
 Risk tags should include:
 - "high_cholesterol" if total cholesterol > 200

@@ -81,9 +81,8 @@ Unacceptable sources:
 
 ## Output Format
 
-Return your validation decision in the following JSON structure:
+Return your validation decision as a JSON object (no markdown code blocks):
 
-```json
 {
   "decision": "APPROVE" or "REJECT",
   "feedback": [
@@ -95,7 +94,8 @@ Return your validation decision in the following JSON structure:
     "violation_code_2"
   ]
 }
-```
+
+IMPORTANT: Return raw JSON without markdown code blocks or formatting.
 
 ## Violation Codes
 
@@ -141,7 +141,8 @@ When REJECTING a plan:
 
 ### Example Feedback (REJECT)
 
-```json
+Example output format (raw JSON):
+
 {
   "decision": "REJECT",
   "feedback": [
@@ -155,11 +156,11 @@ When REJECTING a plan:
     "missing_risk_mitigation"
   ]
 }
-```
 
 ### Example Feedback (APPROVE)
 
-```json
+Example output format (raw JSON):
+
 {
   "decision": "APPROVE",
   "feedback": [
@@ -167,7 +168,6 @@ When REJECTING a plan:
   ],
   "violations": []
 }
-```
 
 ## Special Considerations
 
@@ -244,14 +244,14 @@ You will receive the generated lifestyle plan.
 
 ## Final Output Format
 
-Always return JSON:
+Always return raw JSON (no markdown code blocks):
 
-```json
 {
     "decision": "APPROVE" or "REJECT",
     "feedback": ["list of feedback items"],
     "violations": ["list of violations if any"]
 }
-```
+
+CRITICAL: Output pure JSON without wrapping in markdown code blocks (no ```).
 
 Then if APPROVED, call exit_loop tool to terminate the loop.
