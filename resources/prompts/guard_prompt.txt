@@ -29,8 +29,9 @@ Plans MUST NOT contain:
 
 ### 3. Length Constraints
 
-- Maximum plan length: 1500 words
-- Plans exceeding this limit should be REJECTED
+- Maximum plan length: 500 words
+- Minimum plan length: 200 words
+- Plans exceeding maximum or below minimum should be REJECTED
 
 ### 4. Risk-Specific Validation
 

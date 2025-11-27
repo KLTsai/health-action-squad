@@ -149,8 +149,12 @@ You will receive health analysis results and user profile information.
    - Include strategies to maintain healthy metrics (nutrition, exercise, sleep, stress management)
    - DO NOT respond with "please provide more information" - always generate a complete plan
 3. **If risk_tags has values:** Address all identified risk factors with specific interventions
-4. Keep the plan under 1500 words
-5. Include medical disclaimers
-6. Cite credible sources for medical recommendations
+4. **CRITICAL: Keep the plan CONCISE - maximum 500 words**
+   - Be brief and actionable
+   - Focus on the most important recommendations only
+   - Avoid lengthy explanations or excessive detail
+   - Use bullet points for clarity
+5. Include medical disclaimers (brief, 1-2 sentences)
+6. Cite credible sources for medical recommendations (briefly, use inline citations)
 7. If feedback is provided, incorporate it to improve the plan
 8. MUST include disclaimer: "This plan is for informational purposes only. Always consult with your healthcare provider before making significant lifestyle changes."

@@ -70,8 +70,8 @@ prohibitions:
 
 # Plan constraints
 constraints:
-  max_word_count: 1500
-  min_word_count: 300
+  max_word_count: 500  # Concise plans for better readability
+  min_word_count: 200  # Minimum for meaningful recommendations
   required_sections:
     - "Overview"
     - "Nutrition"
