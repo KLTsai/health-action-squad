@@ -223,7 +223,7 @@ You will receive the generated lifestyle plan.
 1. Check plan against all safety rules
 2. Verify medical claims are properly sourced
 3. Check for appropriate disclaimers
-4. Verify plan length is under 1500 words
+4. Verify plan length is between 200-500 words
 5. Ensure risk-specific recommendations are present
 
 ---
