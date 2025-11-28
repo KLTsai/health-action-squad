@@ -7,6 +7,8 @@ It exposes endpoints for health report analysis and lifestyle plan generation.
 import json
 import time
 import tempfile
+import sys
+import uvicorn
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional, List, Any
@@ -15,12 +17,14 @@ from fastapi import FastAPI, HTTPException, Request, status, File, UploadFile, F
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
 from src.workflow.orchestrator import Orchestrator
 from src.common.config import Config
 from src.utils.logger import get_logger
 from src.parsers import HealthReportParser as OCRParser
 from src.ai.parser import HealthReportParser as LegacyParser
-from .models import (
+from src.api.models import (
     HealthReportRequest,
     PlanGenerationResponse,
     ErrorResponse,
@@ -29,7 +33,7 @@ from .models import (
     ParsedReportResponse,
     MultiFileUploadStats,
 )
-from .middleware import setup_middleware
+from src.api.middleware import setup_middleware
 
 # Initialize logger
 logger = get_logger(__name__)
@@ -675,4 +679,13 @@ async def shutdown_event():
     logger.info(
         "Health Action Squad API shutting down",
         uptime_seconds=uptime,
+    )
+
+if __name__ == "__main__":
+    uvicorn.run(
+        "src.api.server:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,        # = 自動重載，通常等於「開發模式」
+        log_level="debug"   # = 額外 debug log
     )
