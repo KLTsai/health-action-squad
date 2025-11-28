@@ -10,7 +10,8 @@ from typing import Optional
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
-load_dotenv()
+# Use override=True to ensure .env values take precedence over system env vars
+load_dotenv(override=True)
 
 # ADK requires GOOGLE_API_KEY environment variable
 # Set it from GEMINI_API_KEY if not already set

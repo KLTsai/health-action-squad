@@ -15,8 +15,10 @@ Logging:
 
 from google.adk.agents import LlmAgent
 from google.adk.models import Gemini
+from google.genai.types import GenerateContentConfig
 
 from ..ai import load_prompt
+from ..common.config import Config
 from ..utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -50,19 +52,28 @@ class LifestylePlannerAgent:
         # Create ADK Gemini model instance
         gemini_model = Gemini(model=model_name)
 
+        # Create generation config with temperature and max_tokens from Config
+        gen_config = GenerateContentConfig(
+            temperature=Config.TEMPERATURE,
+            max_output_tokens=Config.MAX_TOKENS
+        )
+
         logger.info(
             "LifestylePlanner agent created",
             model=model_name,
+            temperature=Config.TEMPERATURE,
+            max_output_tokens=Config.MAX_TOKENS,
             output_key="current_plan",
             description="Generates personalized lifestyle plans from health metrics",
             state_injection_fields=["health_analysis", "user_profile", "validation_result"]
         )
 
-        # ADK LlmAgent with Gemini model
+        # ADK LlmAgent with Gemini model and generation config
         return LlmAgent(
             name="LifestylePlanner",
             model=gemini_model,
             instruction=system_prompt,
+            generate_content_config=gen_config,
             output_key="current_plan",
             description="Generates personalized lifestyle plans from health metrics"
         )

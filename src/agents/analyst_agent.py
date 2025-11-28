@@ -9,8 +9,10 @@ Logging:
 
 from google.adk.agents import LlmAgent
 from google.adk.models import Gemini
+from google.genai.types import GenerateContentConfig
 
 from ..ai import load_prompt
+from ..common.config import Config
 from ..utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -45,18 +47,27 @@ class ReportAnalystAgent:
         # Create ADK Gemini model instance
         gemini_model = Gemini(model=model_name)
 
+        # Create generation config with temperature and max_tokens from Config
+        gen_config = GenerateContentConfig(
+            temperature=Config.TEMPERATURE,
+            max_output_tokens=Config.MAX_TOKENS
+        )
+
         logger.info(
             "ReportAnalyst agent created",
             model=model_name,
+            temperature=Config.TEMPERATURE,
+            max_output_tokens=Config.MAX_TOKENS,
             output_key="health_analysis",
             description="Parses health reports into structured metrics and risk tags"
         )
 
-        # ADK LlmAgent with Gemini model
+        # ADK LlmAgent with Gemini model and generation config
         return LlmAgent(
             name="ReportAnalyst",
             model=gemini_model,
             instruction=system_prompt,
+            generate_content_config=gen_config,
             output_key="health_analysis",
             description="Parses health reports into structured metrics and risk tags"
         )

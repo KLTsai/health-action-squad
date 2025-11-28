@@ -319,9 +319,10 @@ class HealthReportParser:
             return 0.0
 
         # Count how many required fields are present and non-empty
+        # Note: Empty strings should NOT count as valid values
         present_fields = sum(
             1 for field in self.REQUIRED_FIELDS
-            if field in data and data[field] is not None
+            if field in data and data[field] not in (None, "")
         )
 
         completeness = present_fields / len(self.REQUIRED_FIELDS)

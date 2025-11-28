@@ -17,6 +17,7 @@ from google.adk.agents import LlmAgent
 from google.adk.tools.exit_loop_tool import exit_loop
 from google.adk.tools import FunctionTool
 from google.adk.models import Gemini
+from google.genai.types import GenerateContentConfig
 
 from ..ai import load_prompt
 from ..common.config import Config
@@ -59,9 +60,17 @@ class SafetyGuardAgent:
         # Create ADK Gemini model instance
         gemini_model = Gemini(model=model_name)
 
+        # Create generation config with temperature and max_tokens from Config
+        gen_config = GenerateContentConfig(
+            temperature=Config.TEMPERATURE,
+            max_output_tokens=Config.MAX_TOKENS
+        )
+
         logger.info(
             "SafetyGuard agent created",
             model=model_name,
+            temperature=Config.TEMPERATURE,
+            max_output_tokens=Config.MAX_TOKENS,
             output_key="validation_result",
             description="Validates plans against safety policies and terminates loop on approval",
             tools=["exit_loop"]
@@ -74,11 +83,12 @@ class SafetyGuardAgent:
             f"```yaml\n{safety_rules_yaml}```"
         )
 
-        # ADK LlmAgent with Gemini model
+        # ADK LlmAgent with Gemini model and generation config
         return LlmAgent(
             name="SafetyGuard",
             model=gemini_model,
             instruction=enhanced_prompt,
+            generate_content_config=gen_config,
             output_key="validation_result",
             tools=[FunctionTool(exit_loop)],  # Use ADK's built-in exit_loop tool
             description="Validates plans against safety policies and terminates loop on approval"
