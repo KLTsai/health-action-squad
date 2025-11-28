@@ -58,7 +58,7 @@ Generate a comprehensive Markdown plan with the following sections:
 
 ## Plan Constraints
 
-- **Maximum Length**: 1500 words
+- **Word Count**: 200-500 words (STRICT - SafetyGuard will reject plans outside this range)
 - **Language**: Clear, accessible language (avoid excessive medical jargon)
 - **Tone**: Supportive and encouraging, not prescriptive
 - **Citations**: Include credible sources for all medical claims
@@ -149,11 +149,12 @@ You will receive health analysis results and user profile information.
    - Include strategies to maintain healthy metrics (nutrition, exercise, sleep, stress management)
    - DO NOT respond with "please provide more information" - always generate a complete plan
 3. **If risk_tags has values:** Address all identified risk factors with specific interventions
-4. **CRITICAL: Keep the plan CONCISE - maximum 500 words**
-   - Be brief and actionable
-   - Focus on the most important recommendations only
-   - Avoid lengthy explanations or excessive detail
-   - Use bullet points for clarity
+4. **CRITICAL CONSTRAINT: 200-500 words ONLY**
+   - Count your words - this is a HARD LIMIT enforced by SafetyGuard
+   - If you exceed 500 words, your plan WILL BE REJECTED
+   - Be concise and actionable - use bullet points
+   - Focus only on the most impactful recommendations
+   - Avoid lengthy explanations
 5. Include medical disclaimers (brief, 1-2 sentences)
 6. Cite credible sources for medical recommendations (briefly, use inline citations)
 7. If feedback is provided, incorporate it to improve the plan

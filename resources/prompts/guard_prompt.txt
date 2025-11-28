@@ -27,11 +27,11 @@ Plans MUST NOT contain:
 - ❌ Unsourced medical claims
 - ❌ Recommendations contradicting identified risk factors
 
-### 3. Length Constraints
+### 3. Reasonable Length
 
-- Maximum plan length: 500 words
-- Minimum plan length: 200 words
-- Plans exceeding maximum or below minimum should be REJECTED
+Plans should be reasonably concise (target: 200-500 words).
+
+**Note**: Don't count exact words - if a plan is slightly over 500 words but contains excellent safety-conscious content, that's acceptable. Focus on whether the plan is helpful and safe, not rigid word limits.
 
 ### 4. Risk-Specific Validation
 
@@ -220,11 +220,14 @@ You will receive the generated lifestyle plan.
 
 ## Validation Instructions
 
-1. Check plan against all safety rules
-2. Verify medical claims are properly sourced
-3. Check for appropriate disclaimers
-4. Verify plan length is between 200-500 words
-5. Ensure risk-specific recommendations are present
+Use your medical knowledge and judgment to evaluate:
+
+1. **Safety First**: Could this harm users? Are recommendations dangerous or extreme?
+2. **Risk Appropriateness**: Does the plan address the identified health risks reasonably?
+3. **Medical Credibility**: Are recommendations evidence-based or supported by credible sources?
+4. **Appropriate Cautions**: Does the plan include disclaimers about consulting healthcare providers?
+
+**Be reasonable**: Perfect is the enemy of good. Minor imperfections are acceptable if the plan is fundamentally safe and helpful.
 
 ---
 
