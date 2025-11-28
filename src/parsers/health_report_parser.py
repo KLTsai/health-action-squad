@@ -27,7 +27,7 @@ from PIL import Image
 from ..utils.logger import get_logger, AgentLogger
 from ..common.config import Config
 from .llm_fallback import GeminiStructuredExtractor
-from .image_preprocessor import MobilePhotoOptimizer
+from .simple_mobile_preprocessor import SimpleMobilePreprocessor
 
 logger = get_logger(__name__)
 agent_logger = AgentLogger("HealthReportParser")
@@ -88,7 +88,7 @@ class HealthReportParser:
         self.preprocess_images = preprocess_images
         self.session_id = session_id
         self.llm_extractor = GeminiStructuredExtractor(session_id=session_id)
-        self.image_preprocessor = MobilePhotoOptimizer() if preprocess_images else None
+        self.image_preprocessor = SimpleMobilePreprocessor(enable_threshold=False) if preprocess_images else None
 
         if session_id:
             agent_logger.set_session(session_id)
@@ -426,23 +426,24 @@ class HealthReportParser:
             if file_type == FileType.UNKNOWN:
                 raise ValueError(f"Unsupported file type: {file_path}")
 
-            # Step 2: Preprocess image for mobile photo quality (if enabled)
-            processed_file_path = file_path
-            if self.preprocess_images and file_type in (FileType.JPG, FileType.JPEG, FileType.PNG):
-                agent_logger.info("Preprocessing mobile photo for OCR optimization")
-                # Run preprocessing in thread pool for true parallelism (CPU-intensive operation)
-                processed_file_path = await asyncio.to_thread(
-                    self.image_preprocessor.preprocess, file_path, quick_mode=True
-                )
-                agent_logger.info("Image preprocessing completed", output=processed_file_path)
-
-            # Step 3: Load file and convert to images
+            # Step 2: Load file and convert to images
             if file_type == FileType.PDF:
                 images = self._pdf_to_images(file_path)
             elif file_type in (FileType.JPG, FileType.JPEG, FileType.PNG):
-                images = [self._load_image(processed_file_path)]
+                images = [self._load_image(file_path)]
             else:
                 raise ValueError(f"File type not handled: {file_type}")
+
+            # Step 3: Preprocess images for mobile photo quality (if enabled)
+            if self.preprocess_images and file_type in (FileType.JPG, FileType.JPEG, FileType.PNG):
+                agent_logger.info("Preprocessing mobile photo for OCR optimization")
+                # Run preprocessing in thread pool for true parallelism (CPU-intensive operation)
+                processed_array = await asyncio.to_thread(
+                    self.image_preprocessor.preprocess, file_path
+                )
+                # Convert numpy array back to PIL Image
+                images = [Image.fromarray(processed_array)]
+                agent_logger.info("Image preprocessing completed")
 
             # Step 4: Extract data using OCR
             # Run OCR in thread pool for true parallelism (CPU-intensive operation)
