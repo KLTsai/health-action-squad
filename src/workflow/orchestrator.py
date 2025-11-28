@@ -17,6 +17,7 @@ from typing import Dict, Optional
 import uuid
 from datetime import datetime
 import json
+import yaml
 
 from google.adk.agents import SequentialAgent, LoopAgent, InvocationContext
 from google.adk.sessions import InMemorySessionService
@@ -112,6 +113,38 @@ class Orchestrator:
             model=model_name
         )
 
+    def _load_safety_rules_yaml(self) -> str:
+        """Load safety rules from YAML file and return as formatted YAML string.
+
+        Returns:
+            Formatted YAML string with safety rules (for ADK placeholder injection)
+
+        Raises:
+            FileNotFoundError: If safety rules file doesn't exist
+        """
+        if not Config.SAFETY_RULES_PATH.exists():
+            logger.error(
+                "Safety rules file not found",
+                rules_path=str(Config.SAFETY_RULES_PATH)
+            )
+            raise FileNotFoundError(
+                f"Safety rules not found: {Config.SAFETY_RULES_PATH}"
+            )
+
+        with Config.SAFETY_RULES_PATH.open("r", encoding="utf-8") as f:
+            safety_rules = yaml.safe_load(f)
+
+        # Convert to formatted YAML string for Guard prompt injection
+        safety_rules_yaml = yaml.dump(safety_rules, default_flow_style=False)
+
+        logger.info(
+            "Safety rules loaded for ADK state injection",
+            rules_path=str(Config.SAFETY_RULES_PATH),
+            yaml_length=len(safety_rules_yaml)
+        )
+
+        return f"```yaml\n{safety_rules_yaml}```"
+
     async def execute(self, health_report: Dict, user_profile: Optional[Dict] = None) -> Dict:
         """Execute the ADK workflow.
 
@@ -139,6 +172,9 @@ class Orchestrator:
         )
 
         try:
+            # Load safety rules for Guard agent placeholder injection
+            safety_rules_yaml = self._load_safety_rules_yaml()
+
             # Prepare initial state dict with all expected keys
             # ADK requires all state keys referenced in prompts to be pre-defined
             initial_state = {
@@ -147,6 +183,7 @@ class Orchestrator:
                 "health_analysis": None,  # Will be populated by ReportAnalyst
                 "current_plan": None,  # Will be populated by LifestylePlanner
                 "validation_result": None,  # Will be populated by SafetyGuard
+                "safety_rules_yaml": safety_rules_yaml,  # Static, loaded once for Guard
             }
 
             self.logger.info(

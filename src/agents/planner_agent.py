@@ -3,7 +3,7 @@
 Generates personalized lifestyle plans using Google ADK.
 
 State Injection:
-- Uses ADK placeholder syntax for automatic state injection:
+- Uses InstructionProvider with inject_session_state for reliable state injection
   - {health_analysis} - From ReportAnalyst output
   - {user_profile} - From initial state
   - {validation_result} - From SafetyGuard feedback on retry
@@ -14,8 +14,10 @@ Logging:
 """
 
 from google.adk.agents import LlmAgent
+from google.adk.agents.readonly_context import ReadonlyContext
 from google.adk.models import Gemini
 from google.genai.types import GenerateContentConfig
+from google.adk.utils.instructions_utils import inject_session_state
 
 from ..ai import load_prompt
 from ..common.config import Config
@@ -37,18 +39,28 @@ class LifestylePlannerAgent:
     """
 
     @staticmethod
+    async def _build_planner_instruction(readonly_context: ReadonlyContext) -> str:
+        """InstructionProvider: Dynamically build Planner instruction with session state injection.
+
+        Args:
+            readonly_context: ADK readonly context with session state access
+
+        Returns:
+            Fully populated instruction string
+        """
+        prompt_template = load_prompt("planner_prompt")
+        return await inject_session_state(prompt_template, readonly_context)
+
+    @staticmethod
     def create_agent(model_name: str = "gemini-2.5-flash") -> LlmAgent:
-        """Create ADK LlmAgent for lifestyle plan generation.
+        """Create ADK LlmAgent for lifestyle plan generation with InstructionProvider.
 
         Args:
             model_name: Gemini model name (default: gemini-2.5-flash)
 
         Returns:
-            Configured LlmAgent instance
+            Configured LlmAgent instance with InstructionProvider
         """
-        # Load system prompt from external file
-        system_prompt = load_prompt("planner_prompt")
-
         # Create ADK Gemini model instance
         gemini_model = Gemini(model=model_name)
 
@@ -59,20 +71,20 @@ class LifestylePlannerAgent:
         )
 
         logger.info(
-            "LifestylePlanner agent created",
+            "LifestylePlanner agent created with InstructionProvider",
             model=model_name,
             temperature=Config.TEMPERATURE,
             max_output_tokens=Config.MAX_TOKENS,
             output_key="current_plan",
             description="Generates personalized lifestyle plans from health metrics",
-            state_injection_fields=["health_analysis", "user_profile", "validation_result"]
+            instruction_provider="LifestylePlannerAgent._build_planner_instruction"
         )
 
-        # ADK LlmAgent with Gemini model and generation config
+        # ADK LlmAgent with InstructionProvider
         return LlmAgent(
             name="LifestylePlanner",
             model=gemini_model,
-            instruction=system_prompt,
+            instruction=LifestylePlannerAgent._build_planner_instruction,
             generate_content_config=gen_config,
             output_key="current_plan",
             description="Generates personalized lifestyle plans from health metrics"

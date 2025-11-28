@@ -3,21 +3,27 @@
 Validates lifestyle plans against safety policies using Google ADK.
 
 Safety Rules:
-- Loads safety policies from resources/policies/safety_rules.yaml
+- Safety policies from resources/policies/safety_rules.yaml are injected via InstructionProvider
 - Validates against all rules before approving plan
 - Provides structured feedback for rejection cases
 
 Logging:
-- Logs safety rules loading
 - Execution tracing with approval/rejection decisions handled by orchestrator
+
+ADK InstructionProvider Pattern:
+- Uses InstructionProvider to dynamically inject state at runtime
+- Uses inject_session_state utility to replace {safety_rules_yaml}, {current_plan}, {health_analysis}
+- This pattern is required for LoopAgent to access session state reliably
+- Reference: https://google.github.io/adk-docs/sessions/state/
 """
 
-import yaml
 from google.adk.agents import LlmAgent
+from google.adk.agents.readonly_context import ReadonlyContext
 from google.adk.tools.exit_loop_tool import exit_loop
 from google.adk.tools import FunctionTool
 from google.adk.models import Gemini
 from google.genai.types import GenerateContentConfig
+from google.adk.utils.instructions_utils import inject_session_state
 
 from ..ai import load_prompt
 from ..common.config import Config
@@ -35,28 +41,47 @@ class SafetyGuardAgent:
     - Detect potentially harmful recommendations
     - Return: decision (APPROVE/REJECT), feedback, violations
     - On REJECT: provide specific feedback for Planner retry
-    - On APPROVE: call approve_and_exit tool to terminate loop
+    - On APPROVE: call exit_loop tool to terminate loop
 
     System prompt loaded from: resources/prompts/guard_prompt.txt
-    Safety rules loaded from: resources/policies/safety_rules.yaml
+    Safety rules injected via InstructionProvider from: resources/policies/safety_rules.yaml
     """
 
     @staticmethod
+    async def _build_guard_instruction(readonly_context: ReadonlyContext) -> str:
+        """InstructionProvider: Dynamically build Guard instruction with session state injection.
+
+        This function is called by ADK at runtime and receives the current session context.
+        It uses inject_session_state to replace placeholders with actual values from session.state.
+
+        Args:
+            readonly_context: ADK readonly context with session state access
+
+        Returns:
+            Fully populated instruction string with all placeholders replaced
+        """
+        # Load the prompt template (contains {placeholders})
+        prompt_template = load_prompt("guard_prompt")
+
+        # Use ADK's inject_session_state utility to replace {safety_rules_yaml},
+        # {current_plan}, {health_analysis} with actual values from session.state
+        populated_instruction = await inject_session_state(
+            prompt_template,
+            readonly_context
+        )
+
+        return populated_instruction
+
+    @staticmethod
     def create_agent(model_name: str = "gemini-2.5-flash") -> LlmAgent:
-        """Create ADK LlmAgent for safety validation.
+        """Create ADK LlmAgent for safety validation with InstructionProvider.
 
         Args:
             model_name: Gemini model name (default: gemini-2.5-flash)
 
         Returns:
-            Configured LlmAgent instance with termination tool
+            Configured LlmAgent instance with InstructionProvider and termination tool
         """
-        # Load system prompt from external file
-        system_prompt = load_prompt("guard_prompt")
-
-        # Load safety rules from YAML
-        safety_rules = SafetyGuardAgent._load_safety_rules()
-
         # Create ADK Gemini model instance
         gemini_model = Gemini(model=model_name)
 
@@ -67,59 +92,25 @@ class SafetyGuardAgent:
         )
 
         logger.info(
-            "SafetyGuard agent created",
+            "SafetyGuard agent created with InstructionProvider",
             model=model_name,
             temperature=Config.TEMPERATURE,
             max_output_tokens=Config.MAX_TOKENS,
             output_key="validation_result",
             description="Validates plans against safety policies and terminates loop on approval",
-            tools=["exit_loop"]
+            tools=["exit_loop"],
+            instruction_provider="SafetyGuardAgent._build_guard_instruction"
         )
 
-        # Inject dynamic safety rules into the loaded prompt
-        safety_rules_yaml = yaml.dump(safety_rules, default_flow_style=False)
-        enhanced_prompt = system_prompt.replace(
-            "{safety_rules_yaml}",
-            f"```yaml\n{safety_rules_yaml}```"
-        )
-
-        # ADK LlmAgent with Gemini model and generation config
+        # ADK LlmAgent with InstructionProvider
+        # The instruction parameter accepts a callable (function) that receives ReadonlyContext
+        # and returns the populated instruction string
         return LlmAgent(
             name="SafetyGuard",
             model=gemini_model,
-            instruction=enhanced_prompt,
+            instruction=SafetyGuardAgent._build_guard_instruction,  # InstructionProvider function
             generate_content_config=gen_config,
             output_key="validation_result",
             tools=[FunctionTool(exit_loop)],  # Use ADK's built-in exit_loop tool
             description="Validates plans against safety policies and terminates loop on approval"
         )
-
-    @staticmethod
-    def _load_safety_rules() -> dict:
-        """Load safety rules from resources/policies/safety_rules.yaml.
-
-        Returns:
-            Safety rules dictionary
-
-        Raises:
-            FileNotFoundError: If safety rules file doesn't exist
-        """
-        if not Config.SAFETY_RULES_PATH.exists():
-            logger.error(
-                "Safety rules file not found",
-                rules_path=str(Config.SAFETY_RULES_PATH)
-            )
-            raise FileNotFoundError(
-                f"Safety rules not found: {Config.SAFETY_RULES_PATH}"
-            )
-
-        with Config.SAFETY_RULES_PATH.open("r", encoding="utf-8") as f:
-            safety_rules = yaml.safe_load(f)
-
-        logger.info(
-            "Safety rules loaded",
-            rules_path=str(Config.SAFETY_RULES_PATH),
-            rule_count=len(safety_rules) if safety_rules else 0
-        )
-
-        return safety_rules
