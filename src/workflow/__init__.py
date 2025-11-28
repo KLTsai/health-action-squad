@@ -3,6 +3,12 @@
 Contains orchestration logic and workflow patterns.
 """
 
-from .orchestrator import Orchestrator
+from .event_processor import EventStreamProcessor
+from .response_formatter import ResponseFormatter
 
-__all__ = ["Orchestrator"]
+# Lazy import to avoid requiring google.adk at import time
+def _get_orchestrator():
+    from .orchestrator import Orchestrator
+    return Orchestrator
+
+__all__ = ["EventStreamProcessor", "ResponseFormatter", "_get_orchestrator"]

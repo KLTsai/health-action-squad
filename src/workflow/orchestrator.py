@@ -25,10 +25,11 @@ from google.adk.runners import RunConfig
 from ..domain.state import MAX_RETRIES  # SessionState/WorkflowStatus not used in ADK workflow
 from ..common.config import Config
 from ..utils.logger import get_logger, AgentLogger
-from ..utils.json_parser import parse_agent_json_output
 from ..agents.analyst_agent import ReportAnalystAgent
 from ..agents.planner_agent import LifestylePlannerAgent
 from ..agents.guard_agent import SafetyGuardAgent
+from .event_processor import EventStreamProcessor
+from .response_formatter import ResponseFormatter
 
 
 logger = get_logger(__name__)
@@ -93,6 +94,16 @@ class Orchestrator:
 
         # Create session service for ADK execution
         self.session_service = InMemorySessionService()
+
+        # Initialize EventStreamProcessor with agent-to-output-key mapping
+        self.event_processor = EventStreamProcessor({
+            "ReportAnalyst": "health_analysis",
+            "LifestylePlanner": "current_plan",
+            "SafetyGuard": "validation_result"
+        })
+
+        # Initialize ResponseFormatter for output formatting
+        self.response_formatter = ResponseFormatter(model_name=model_name)
 
         logger.info(
             "ADK Orchestrator initialized",
@@ -182,34 +193,11 @@ class Orchestrator:
                 run_config=run_config
             )
 
-            # Execute workflow using direct run_async() call
-            # Collect outputs from events by author
-            agent_outputs = {}
-
-            async for event in self.workflow.run_async(context):
-                # Extract content from events
-                if hasattr(event, 'author') and hasattr(event, 'content') and event.content:
-                    author = event.author
-                    # Extract text from content parts
-                    if hasattr(event.content, 'parts') and event.content.parts:
-                        for part in event.content.parts:
-                            if hasattr(part, 'text') and part.text:
-                                # Map agent author to output key
-                                if author == "ReportAnalyst":
-                                    agent_outputs["health_analysis"] = part.text
-                                elif author == "LifestylePlanner":
-                                    agent_outputs["current_plan"] = part.text
-                                elif author == "SafetyGuard":
-                                    agent_outputs["validation_result"] = part.text
-
-                self.logger.debug(
-                    "ADK Event received",
-                    extra={
-                        "event_type": type(event).__name__,
-                        "session_id": session_id,
-                        "author": event.author if hasattr(event, 'author') else None
-                    }
-                )
+            # Execute workflow using EventStreamProcessor
+            agent_outputs = await self.event_processor.process_events(
+                self.workflow.run_async(context),
+                self.logger
+            )
 
             # Combine initial state with agent outputs
             final_state = {**initial_state, **agent_outputs}
@@ -238,7 +226,9 @@ class Orchestrator:
                 }
             )
 
-            return self._format_adk_output(final_state, session_id, timestamp)
+            return self.response_formatter.format_success_response(
+                final_state, session_id, timestamp, self.model_name
+            )
 
         except Exception as e:
             import traceback
@@ -252,149 +242,6 @@ class Orchestrator:
                 },
             )
             # Return fallback result
-            return self._generate_fallback_from_error(session_id, timestamp, str(e))
-
-    def _format_adk_output(self, adk_result: Dict, session_id: str, timestamp: str) -> Dict:
-        """Format ADK workflow output into standard response.
-
-        Args:
-            adk_result: Result dict from ADK workflow execution
-            session_id: Session identifier
-            timestamp: Execution timestamp
-
-        Returns:
-            Formatted output dictionary with all required fields
-
-        Raises:
-            ValueError: If workflow result is missing required output keys
-        """
-        # Validate required output keys exist
-        required_keys = ["health_analysis", "current_plan", "validation_result"]
-        missing_keys = [k for k in required_keys if k not in adk_result]
-
-        if missing_keys:
-            self.logger.error(
-                "Incomplete workflow result",
-                extra={
-                    "missing_keys": missing_keys,
-                    "available_keys": list(adk_result.keys())
-                }
+            return self.response_formatter.format_error_response(
+                e, session_id, timestamp, self.model_name
             )
-            raise ValueError(f"Workflow missing required outputs: {missing_keys}")
-
-        # Extract and parse health analysis (handles markdown-wrapped JSON)
-        health_analysis = parse_agent_json_output(
-            adk_result.get("health_analysis", {}),
-            field_name="health_analysis",
-            fallback_value={}
-        )
-
-        # Extract and parse validation result (handles markdown-wrapped JSON)
-        validation_result = parse_agent_json_output(
-            adk_result.get("validation_result", {}),
-            field_name="validation_result",
-            fallback_value={}
-        )
-
-        # Extract risk_tags from parsed health_analysis
-        risk_tags = health_analysis.get("risk_tags", []) if isinstance(health_analysis, dict) else []
-
-        # Determine status based on validation decision
-        status = "approved"
-        if isinstance(validation_result, dict):
-            decision = validation_result.get("decision", "APPROVE")
-            if decision != "APPROVE":
-                status = "rejected"
-
-        # Extract iteration count from ADK loop metadata (if available)
-        # ADK LoopAgent may provide this in metadata
-        iterations = adk_result.get("_loop_iterations", 1)
-        if iterations == 1 and isinstance(validation_result, dict):
-            # Fallback: check if there's retry information
-            iterations = adk_result.get("iterations", 1)
-
-        return {
-            "session_id": session_id,
-            "timestamp": timestamp,
-            "status": status,
-            "plan": adk_result.get("current_plan", ""),
-            "risk_tags": risk_tags,
-            "iterations": iterations,
-            "health_analysis": health_analysis,
-            "validation_result": validation_result,
-            "workflow_type": "adk",
-            "model": self.model_name,
-        }
-
-    def _generate_fallback_from_error(
-        self, session_id: str, timestamp: str, error: str
-    ) -> Dict:
-        """Generate fallback response when ADK workflow fails.
-
-        Args:
-            session_id: Session identifier
-            timestamp: Execution timestamp
-            error: Error message
-
-        Returns:
-            Fallback response dictionary with all required fields
-        """
-        fallback_plan = self._create_safe_fallback_plan([])
-
-        return {
-            "session_id": session_id,
-            "timestamp": timestamp,
-            "status": "fallback",
-            "plan": fallback_plan,
-            "risk_tags": [],
-            "iterations": 1,  # Changed from 0 to 1 to satisfy Pydantic validation (ge=1)
-            "health_analysis": {},
-            "validation_result": {},
-            "message": "Unable to generate personalized plan. Providing safe general recommendations.",
-            "error": error,
-            "workflow_type": "adk",
-            "model": self.model_name,
-        }
-
-    def _create_safe_fallback_plan(self, risk_tags: list) -> str:
-        """Create safe generic advice as fallback.
-
-        Args:
-            risk_tags: List of identified risk tags
-
-        Returns:
-            Safe fallback plan in Markdown
-        """
-        return """# General Health Recommendations
-
-⚠️ **Note**: This is a general recommendation. Please consult with a healthcare provider for personalized advice.
-
-## General Guidelines
-
-1. **Physical Activity**
-   - Aim for at least 150 minutes of moderate aerobic activity per week
-   - Include strength training exercises 2+ times per week
-   - Start slowly and gradually increase intensity
-
-2. **Nutrition**
-   - Follow a balanced diet with fruits, vegetables, whole grains, and lean proteins
-   - Stay hydrated with adequate water intake
-   - Limit processed foods, added sugars, and excessive salt
-
-3. **Sleep**
-   - Aim for 7-9 hours of quality sleep per night
-   - Maintain a consistent sleep schedule
-   - Create a relaxing bedtime routine
-
-4. **Stress Management**
-   - Practice relaxation techniques (meditation, deep breathing)
-   - Engage in activities you enjoy
-   - Maintain social connections
-
-5. **Medical Care**
-   - Schedule regular check-ups with your healthcare provider
-   - Follow prescribed treatments and medications
-   - Report any concerning symptoms promptly
-
-**⚠️ Important**: This plan is not a substitute for professional medical advice. Please consult your healthcare provider before making significant lifestyle changes.
-"""
