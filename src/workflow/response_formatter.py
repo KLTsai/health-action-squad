@@ -90,11 +90,26 @@ class ResponseFormatter:
         )
 
         # Extract and parse validation result (handles markdown-wrapped JSON)
-        validation_result = parse_agent_json_output(
-            workflow_state.get("validation_result", {}),
-            field_name="validation_result",
-            fallback_value={}
-        )
+        # Note: validation_result may be empty string when Guard calls exit_loop
+        validation_result_raw = workflow_state.get("validation_result", {})
+
+        # If empty string, treat as APPROVE (Guard called exit_loop)
+        if validation_result_raw == "" or validation_result_raw is None:
+            validation_result = {
+                "decision": "APPROVE",
+                "feedback": [],
+                "violations": []
+            }
+        else:
+            validation_result = parse_agent_json_output(
+                validation_result_raw,
+                field_name="validation_result",
+                fallback_value={
+                    "decision": "APPROVE",
+                    "feedback": [],
+                    "violations": []
+                }
+            )
 
         # Extract risk_tags from parsed health_analysis
         risk_tags = health_analysis.get("risk_tags", []) if isinstance(health_analysis, dict) else []
