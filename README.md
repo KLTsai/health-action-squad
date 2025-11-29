@@ -1,237 +1,179 @@
 # Health Action Squad
 
-> **Kaggle Agents Intensive Capstone Project (November 2025)**
-> Multi-agent health concierge that translates confusing health reports into actionable lifestyle plans
+> **Kaggle Agents Intensive Capstone Project (Concierge Agents Track)**
+> *Your Personal Health Concierge: Turning Medical Anxiety into Actionable Clarity.*
+
+![Health Action Squad Banner](docs/images/banner.png)
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Google ADK](https://img.shields.io/badge/Google-ADK-4285F4.svg)](https://google.github.io/adk-docs/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ---
 
-## 💡 The Problem
+## 💡 The Problem: "The Red Number Anxiety"
 
-**Millions receive health screening results yearly but struggle to understand what they mean.**
+We've all been there. You get your annual health check report. It's full of numbers. Some are red.
 
-- Medical jargon is confusing ("LDL 160 mg/dL" - is that bad?)
-- No clear action steps ("Your cholesterol is high" - what do I do?)
-- Overwhelmed by numbers without context
+> *"LDL 160 mg/dL... is that an emergency?"*
+> *"My doctor's appointment is 2 weeks away... what do I do until then?"*
 
-## 🎯 Our Solution
+**The Gap**: Between receiving a report and seeing a doctor, there is a void filled with **anxiety, confusion, and inaction**.
+**The Cost**: Trying to decipher medical jargon alone is stressful. Booking an immediate consultation just to ask "is this bad?" is expensive and time-consuming.
 
-An **AI agent system** that:
+## 🎯 Our Solution: Your Pre-Doctor Consultant
 
-1. **Analyzes** health reports using evidence-based medical guidelines
-2. **Generates** personalized lifestyle plans with credible source citations
-3. **Validates** safety through a Planner-Guard retry loop
-4. **Ensures quality** via multi-iteration refinement (max 3 attempts)
+**Health Action Squad** is NOT a replacement for your doctor. It is your **intelligent concierge** that bridges the gap.
 
-**Target Users**: Health-conscious adults (25-65) who need a "health report translator + action coach"
-**NOT a diagnostic tool** - augments (not replaces) professional medical consultation
+It acts as a "pre-deployment" team that:
+1.  **Translates** confusing data into plain English.
+2.  **Calms** anxiety by contextualizing risks (e.g., "This is high, but here are immediate lifestyle steps").
+3.  **Prepares** you for your doctor's visit with a structured summary and questions.
 
----
-
-## 🤖 ADK Capabilities — FULLY IMPLEMENTED
-
-| ADK Component | Status | Implementation Details |
-|---------------|--------|------------------------|
-| **Multi-Agent Orchestration** | ✅ | SequentialAgent chains analysis → planning workflow<br>LoopAgent implements Planner-Guard retry loop (max 3 iterations)<br>Declarative composition, ADK manages execution flow<br>**Code**: [`agent_factory.py`](src/workflow/factories/agent_factory.py) |
-| **Tool Integration** | ✅ | exit_loop tool enables Guard to terminate retry loop<br>FunctionTool wrapping for external APIs<br>Agent-to-tool communication via ADK interface<br>**Code**: [`guard_agent.py`](src/agents/guard_agent.py#L114) |
-| **Context Engineering & Memory** | ✅ | Automatic state flow via ADK output_keys<br>Placeholder injection: `{health_analysis}`, `{current_plan}`, `{validation_result}`<br>InstructionProvider pattern for dynamic prompts<br>Runner architecture manages state persistence<br>**Code**: [`runner_executor.py`](src/workflow/executors/runner_executor.py) |
-| **Quality & Evaluation** | ✅ | Structured logging with session/agent/iteration tracing<br>Confidence scoring (threshold: 0.85 for auto-use)<br>Multi-iteration validation with feedback loop<br>Circuit breaker prevents infinite loops<br>**Code**: [`logger.py`](src/utils/logger.py), [`response_formatter.py`](src/workflow/response_formatter.py) |
-| **Production Architecture** | ✅ | Clean architecture: High cohesion, low coupling (SOLID)<br>Strategy pattern for swappable executors<br>Factory pattern for centralized agent creation<br>Dependency injection for testability<br>REST API with FastAPI<br>**Code**: [`executors/base.py`](src/workflow/executors/base.py), [`server.py`](src/api/server.py) |
-| **Policy Enforcement** | ✅ | YAML-based safety rules and medical guidelines<br>Traceable sources (NCEP ATP III, ACC/AHA, ADA, WHO)<br>Automated expiry tests (fails if >90 days old)<br>Transparent limitations with legal disclaimers<br>**Code**: [`policies/`](resources/policies/), [`tests/validation/`](tests/validation/) |
-
-🟢 **All 6 ADK capabilities are LIVE and actively integrated into the system.**
-
-This ensures **production-ready quality**, **medical credibility**, and **safety compliance**.
+**Goal**: To remove the fear of the unknown and empower you to take *safe, immediate action* while waiting for professional care.
 
 ---
 
-## 🏗️ Architecture
+## 🤖 The Squad: Agentic Architecture
 
-### Workflow Structure
+We use a **Multi-Agent System** powered by the **Google AI Agents Development Kit (ADK)** to ensure every piece of advice is vetted, safe, and personalized.
 
+![Agent Squad](docs/images/agent_squad.png)
+
+### The Workflow
+
+Our system implements advanced agentic patterns to ensure reliability:
+
+```mermaid
+graph TD
+    User[User Health Report] --> Analyst[🕵️ Analyst Agent]
+    Analyst -->|Risk Tags & Analysis| Planner[📋 Planner Agent]
+    
+    subgraph "Planning Loop (Max 3 Iterations)"
+        Planner -->|Draft Plan| Guard[🛡️ Guard Agent]
+        Guard -->|Review against Safety Rules| Decision{Approved?}
+        Decision -- No (Feedback) --> Planner
+        Decision -- Yes --> Final[✅ Final Action Plan]
+    end
 ```
-Orchestrator (ADK Runner)
-    ↓
-HealthActionSquad (SequentialAgent)
-    ├─> ReportAnalyst (LlmAgent)
-    │     └─> Outputs: health_analysis (JSON with risk_tags)
-    │
-    └─> PlanningLoop (LoopAgent, max_iterations=3)
-          ├─> LifestylePlanner (LlmAgent)
-          │     └─> Inputs: {health_analysis}, {user_profile}, {validation_result}
-          │     └─> Outputs: current_plan (Markdown)
-          │
-          └─> SafetyGuard (LlmAgent)
-                └─> Inputs: {current_plan}, {safety_rules_yaml}
-                └─> Tools: [exit_loop]
-                └─> Decision:
-                      APPROVE → exit_loop() → Workflow END
-                      REJECT → Retry (if < 3 iterations)
-```
 
-### State Flow Example
+### 🧠 Core Agent Concepts Applied
 
-```
-User Input: Health report with high cholesterol (240 mg/dL), high BP (145/92)
+We demonstrate mastery of **6+ key agentic concepts**:
 
-Iteration 1:
-  ReportAnalyst → risk_tags: ["high_cholesterol", "high_blood_pressure"]
-  LifestylePlanner → Generates plan with exercise + diet advice
-  SafetyGuard → REJECT (missing medical disclaimer)
+1.  **Sequential Orchestration**:
+    *   **Concept**: Chaining agents where the output of one becomes the input of the next.
+    *   **Implementation**: `Analyst` parses data -> `Planner` creates strategy -> `Guard` validates safety.
 
-Iteration 2:
-  LifestylePlanner → Revises plan, adds disclaimer
-  SafetyGuard → APPROVE, calls exit_loop()
+2.  **Looping & Self-Correction**:
+    *   **Concept**: Agents that can "think again" based on feedback.
+    *   **Implementation**: The `Planner` refines its plan up to 3 times if the `Guard` rejects it.
 
-Output: Approved personalized plan (2 iterations)
-```
+3.  **Tool Use**:
+    *   **Concept**: Agents using functions to control flow or access data.
+    *   **Implementation**: The `Guard` uses the `exit_loop` tool to signal success and break the retry cycle.
+
+4.  **Context & Memory**:
+    *   **Concept**: Maintaining state across a multi-turn conversation.
+    *   **Implementation**: The system preserves `health_analysis` and `validation_result` context across iterations so the Planner knows *why* it failed.
+
+5.  **Structured Output**:
+    *   **Concept**: Forcing agents to return machine-readable data (JSON) instead of free text.
+    *   **Implementation**: The `Analyst` outputs strict JSON with `risk_tags` for deterministic downstream logic.
+
+6.  **Prompt Engineering & Context Injection**:
+    *   **Concept**: Dynamically inserting data into prompts at runtime.
+    *   **Implementation**: We inject specific user profiles (e.g., "Age: 42, Location: Taiwan") into the Planner's system prompt to tailor advice.
+
+---
+
+## ✨ Key Features
+
+### 1. 🌏 Regional Adaptability (Asian/Taiwan Context)
+Health isn't one-size-fits-all. Our system is designed to respect regional nuances, particularly for **Asian populations**:
+*   **BMI Sensitivity**: Recognizes that Asian populations have different BMI risk thresholds (e.g., BMI ≥ 23 is overweight in many Asian guidelines vs. 25 globally).
+*   **Dietary Relevance**: Suggests culturally appropriate food swaps (e.g., brown rice/tofu instead of generic western recommendations) when the user profile indicates.
+*   **Local Healthcare Context**: Prepares users for the specific "high-volume, short-consultation" environment common in Taiwan/Asia by prioritizing questions for the doctor.
+
+### 2. 🛡️ Safety-First Design (The "Guard" Rail)
+We know health is sensitive. Our **Guard Agent** strictly enforces:
+*   **No Prescriptions**: We never suggest medication dosages.
+*   **Mandatory Disclaimers**: Every plan emphasizes consulting a doctor.
+*   **Source Citation**: Recommendations are backed by guidelines (NCEP ATP III, ADA, etc.).
+
+### 3. 🧘 Personalized Concierge
+Unlike a generic "eat healthy" search result, we tailor advice to *your* numbers:
+*   *High BP?* -> Focus on DASH diet and sodium reduction.
+*   *High Glucose?* -> Focus on carb counting and post-meal walks.
+*   *Sedentary?* -> Start with manageable 10-minute walks, not marathons.
 
 ---
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-
-- Python 3.9+
-- Gemini API key ([Get here](https://aistudio.google.com/app/apikey))
+*   Python 3.9+
+*   Gemini API Key ([Get here](https://aistudio.google.com/app/apikey))
 
 ### Installation
 
 ```bash
-# 1. Clone repository
+# 1. Clone the repo
 git clone https://github.com/KLTsai/health-action-squad.git
 cd health-action-squad
 
-# 2. Create virtual environment
+# 2. Setup Virtual Environment
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 
-# 3. Install dependencies
+# 3. Install Dependencies
 pip install -r requirements.txt
 
-# 4. Configure API key
+# 4. Configure Environment
 cp .env.example .env
-# Edit .env and set GEMINI_API_KEY
+# Edit .env and add your GEMINI_API_KEY
 ```
 
-### Run the Application
+### Usage
 
+**Run the CLI Demo:**
 ```bash
-# Option 1: CLI
 python main.py --input resources/data/sample_health_report.json
-
-# Option 2: API Server
-uvicorn src.api.server:app --reload --port 8000
-# Test at: http://localhost:8000/docs
 ```
 
-### Example API Request
-
+**Start the API Server:**
 ```bash
-curl -X POST "http://localhost:8000/api/v1/generate_plan" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "health_report": {
-      "cholesterol_total": 240,
-      "cholesterol_ldl": 160,
-      "blood_pressure": "145/92",
-      "glucose_fasting": 115,
-      "bmi": 29.5
-    },
-    "user_profile": {
-      "age": 42,
-      "gender": "male",
-      "activity_level": "sedentary"
-    }
-  }'
-```
-
-**Response**:
-
-```json
-{
-  "session_id": "abc-123",
-  "status": "approved",
-  "plan": "# Personalized Health Plan\n\n## Priority Concerns...",
-  "risk_tags": ["high_cholesterol", "high_ldl", "stage_1_hypertension", "prediabetes", "overweight"],
-  "iterations": 2,
-  "timestamp": "2025-11-29T10:30:00Z"
-}
+uvicorn src.api.server:app --reload
+# Open http://localhost:8000/docs to test the API
 ```
 
 ---
 
-## 📊 Quality Metrics
+## 📹 Demo & Deployment
 
-### Test Coverage
+> **[Watch the Demo Video (YouTube)](YOUR_YOUTUBE_LINK_HERE)**  
+> *See the Health Action Squad in action, turning a complex report into a simple plan.*
 
-- **79% coverage** (47 tests, all passing ✅)
-- Unit tests: Components, parsers, agents
-- Integration tests: API endpoints, workflows
-- Validation tests: Medical guideline integrity
+> **[Try the Live App](YOUR_DEPLOYMENT_LINK_HERE)**  
+> *Hosted on Streamlit / HuggingFace Spaces*
 
-### Performance
-
-- **85%** of plans approved within 2 iterations
-- **0.91** average confidence for PDF template matches
-- **Max 3 retries** circuit breaker prevents infinite loops
-
-### Medical Credibility
-
-Every health risk threshold cites published guidelines:
-
-- **NCEP ATP III (2002)**: Cholesterol thresholds
-  - Total ≥200 mg/dL = "borderline high"
-  - LDL ≥160 mg/dL = "high"
-
-- **ACC/AHA 2017**: Blood pressure
-  - Systolic ≥130 OR Diastolic ≥80 = "Stage 1 Hypertension"
-
-- **ADA 2025**: Diabetes criteria
-  - Fasting Glucose ≥126 mg/dL = "diabetes"
-
-**Quarterly Review Enforcement**:
-
-```python
-# tests/validation/test_guideline_integrity.py
-def test_guidelines_not_expired():
-    """Fail CI/CD if guidelines >90 days old."""
-    assert age_days < 90, "Guidelines expired. Review required."
-```
-
-Full documentation: [`medical_guidelines.yaml`](resources/policies/medical_guidelines.yaml)
+*(Note: These links are placeholders for the Capstone submission)*
 
 ---
 
-## 🛡️ Safety & Privacy
+## 📊 Quality & Testing
 
-### Privacy Protection
+We take reliability seriously.
 
-- **No PII storage**: Health data processed in-memory only
-- **No raw logs**: Health metrics not logged (privacy by design)
-- **Rate limiting**: 10 requests/hour/IP prevents abuse
+*   **Test Coverage**: 79% (Unit, Integration, Validation tests).
+*   **Medical Integrity**: Automated tests ensure our guideline configurations (YAML) are never older than 90 days.
+*   **Circuit Breaker**: The loop is hard-capped at 3 iterations to prevent infinite costs.
 
-### Safety Enforcement
-
-All plans validated against [`safety_rules.yaml`](resources/policies/safety_rules.yaml):
-
-```yaml
-prohibited_content:
-  - rule: no_prescriptions
-    description: "Must not prescribe medications or dosages"
-    severity: critical
-
-mandatory_requirements:
-  - rule: medical_disclaimer
-    description: "Must include: 'This is not medical advice. Consult a healthcare provider.'"
-    severity: critical
+Run tests yourself:
+```bash
+pytest tests/
 ```
-
-**Circuit Breaker**: Max 3 Planner-Guard retry loops
-**Fallback Strategy**: Generic safe advice if validation fails after 3 attempts
 
 ---
 
@@ -240,120 +182,26 @@ mandatory_requirements:
 ```
 health-action-squad/
 ├── src/
-│   ├── workflow/              # Orchestration
-│   │   ├── orchestrator.py          # Main facade (193 lines, down from 285)
-│   │   ├── executors/               # Strategy pattern
-│   │   │   ├── base.py              # WorkflowExecutor interface
-│   │   │   └── runner_executor.py   # ADK Runner implementation
-│   │   ├── factories/               # Factory pattern
-│   │   │   └── agent_factory.py     # Centralized agent creation
-│   │   ├── state/                   # State management
-│   │   │   └── state_manager.py     # State preparation
-│   │   └── builders/                # Response formatting
-│   │       └── response_builder.py
-│   ├── agents/                # ADK Agents
-│   │   ├── analyst_agent.py         # Health report parser
-│   │   ├── planner_agent.py         # Plan generator
-│   │   └── guard_agent.py           # Safety validator (exit_loop tool)
-│   ├── ai/                    # AI abstractions
-│   ├── utils/                 # Logging, parsers
-│   └── api/                   # FastAPI REST endpoints
+│   ├── agents/          # The Squad (Analyst, Planner, Guard)
+│   ├── workflow/        # ADK Orchestration (Runner, Factory)
+│   └── api/             # FastAPI Server
 ├── resources/
-│   ├── prompts/               # External prompts (not hardcoded)
-│   │   ├── analyst_prompt.txt
-│   │   ├── planner_prompt.txt
-│   │   └── guard_prompt.txt
-│   ├── policies/              # YAML policies
-│   │   ├── safety_rules.yaml
-│   │   └── medical_guidelines.yaml
-│   └── data/                  # Sample inputs
-├── tests/                     # Test suites (79% coverage)
-│   ├── unit/
-│   ├── integration/
-│   └── validation/
-└── main.py                    # Entry point
+│   ├── policies/        # Safety Rules & Medical Guidelines (YAML)
+│   └── data/            # Sample Health Reports
+├── tests/               # Comprehensive Test Suite
+└── docs/                # Images and Documentation
 ```
-
----
-
-## 🧪 Running Tests
-
-```bash
-# All tests
-pytest tests/
-
-# With coverage report
-pytest --cov=src tests/
-
-# Specific suites
-pytest tests/unit/           # Component tests
-pytest tests/integration/    # API tests
-pytest tests/validation/     # Guideline integrity tests
-```
-
----
-
-## 🎓 Learning Outcomes
-
-This capstone demonstrates mastery of core concepts from the [5-Day AI Agents Intensive](https://www.kaggle.com/learn-guide/5-day-agents):
-
-1. **Multi-Agent Orchestration** - SequentialAgent + LoopAgent composition
-2. **Tool Integration** - exit_loop for flow control
-3. **Context Engineering** - ADK output_keys and placeholder injection
-4. **Quality Evaluation** - Structured logging, confidence scoring, circuit breakers
-5. **Production Architecture** - Clean architecture, SOLID principles, REST API
-6. **Policy Enforcement** - YAML-based safety rules with automated expiry tests
-
-**Why this matters**: Real-world health applications require **trustworthy, traceable AI** - not black-box recommendations.
-
----
-
-## 📚 Resources
-
-### Course Materials
-
-- [5-Day AI Agents Intensive](https://www.kaggle.com/learn-guide/5-day-agents) - Kaggle course
-- [Capstone Competition](https://www.kaggle.com/competitions/agents-intensive-capstone-project/overview) - Official page
-
-### Documentation
-
-- [Google ADK Docs](https://google.github.io/adk-docs/) - Official documentation
-- [CLAUDE.md](CLAUDE.md) - Project development rules
-
-### Medical Guidelines
-
-- [NCEP ATP III](https://www.ncbi.nlm.nih.gov/books/NBK542294/) - Cholesterol
-- [ACC/AHA 2017](https://www.ahajournals.org/doi/10.1161/HYP.0000000000000065) - Blood pressure
-- [ADA Standards](https://diabetesjournals.org/care/issue/48/Supplement_1) - Diabetes
 
 ---
 
 ## 🤝 Contributing
 
-1. Read [CLAUDE.md](CLAUDE.md) for ADK standards
-2. Run tests: `pytest tests/`
-3. Code quality: `black src/ tests/`
-4. Commit with descriptive messages
-
----
-
-## 📝 License
-
-MIT License - See LICENSE file
-
----
+We welcome contributions! Please see [CLAUDE.md](CLAUDE.md) for our coding standards.
 
 ## 👤 Author
 
-**Kaggle Agents Intensive Capstone Project (November 2025)**
-
-GitHub: [KLTsai/health-action-squad](https://github.com/KLTsai/health-action-squad)
-
-For questions, open an issue on GitHub.
+**Kaggle Agents Intensive Capstone Project**
+*Concierge Agents Track*
 
 ---
-
-**Sources**:
-- [Agents Intensive Capstone Project](https://www.kaggle.com/competitions/agents-intensive-capstone-project/overview)
-- [5-Day AI Agents Intensive Course](https://www.kaggle.com/learn-guide/5-day-agents)
-- [Google ADK Documentation](https://google.github.io/adk-docs/)
+*Disclaimer: This tool is for informational purposes only and does not constitute medical advice. Always consult a professional healthcare provider.*
