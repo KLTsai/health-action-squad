@@ -1,5 +1,15 @@
 """Integration tests for FastAPI server."""
 
+import sys
+from unittest.mock import MagicMock
+
+# Mock heavy dependencies BEFORE importing app
+# This prevents PaddleOCR and other heavy models from loading during test collection/import
+sys.modules["paddleocr"] = MagicMock()
+sys.modules["paddleocr.PaddleOCR"] = MagicMock()
+sys.modules["src.parsers.paddle_ocr_parser"] = MagicMock()
+sys.modules["src.parsers.paddle_ocr_parser.PaddleOCRHealthReportParser"] = MagicMock()
+
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import patch, AsyncMock
@@ -67,6 +77,8 @@ class TestPlanGenerationEndpoint:
             "risk_tags": ["high_cholesterol"],
             "iterations": 1,
             "timestamp": "2025-11-21T10:00:00",
+            "health_analysis": {"risk_tags": ["high_cholesterol"]},
+            "validation_result": {"decision": "APPROVE"}
         }
 
         with patch('src.api.server.Orchestrator') as MockOrchestrator:
@@ -93,6 +105,8 @@ class TestPlanGenerationEndpoint:
             "risk_tags": [],
             "iterations": 1,
             "timestamp": "2025-11-21T10:00:00",
+            "health_analysis": {},
+            "validation_result": {"decision": "APPROVE"}
         }
 
         with patch('src.api.server.Orchestrator') as MockOrchestrator:
@@ -109,8 +123,22 @@ class TestPlanGenerationEndpoint:
 
             assert response.status_code == 200
             data = response.json()
-            assert "session_id" in data
-            assert "plan" in data
+            assert data["plan"] == "# Test Plan with Profile"
+
+    def test_generate_plan_handles_errors(self, client, sample_health_report):
+        """Test /api/v1/generate_plan handles internal errors."""
+        with patch('src.api.server.Orchestrator') as MockOrchestrator:
+            mock_orchestrator_instance = MockOrchestrator.return_value
+            mock_orchestrator_instance.execute = AsyncMock(side_effect=Exception("Test Error"))
+
+            response = client.post(
+                "/api/v1/generate_plan",
+                json={"health_report": sample_health_report}
+            )
+
+            assert response.status_code == 500
+            data = response.json()
+            assert data["error"] == "InternalServerError"
 
 
 class TestAPIDocumentation:
@@ -139,6 +167,247 @@ class TestAPIDocumentation:
 
         assert response.status_code == 200
         assert "text/html" in response.headers["content-type"]
+
+
+class TestMultiFileUploadEndpoint:
+    """Test suite for multi-file upload endpoint."""
+
+    def test_single_file_upload_still_works(self, client, tmp_path):
+        """Test backward compatibility - single file upload should still work."""
+        # Create a dummy PDF file
+        test_file = tmp_path / "report.pdf"
+        test_file.write_bytes(b"%PDF-1.4\n%dummy content for testing")
+
+        # Mock the parser and orchestrator
+        mock_parse_result = {
+            "merged_data": {"total_cholesterol": 220, "ldl": 150},
+            "overall_completeness": 0.85,
+            "results": [{"source": "ocr"}],
+        }
+
+        mock_orchestrator_result = {
+            "session_id": "test-session-single",
+            "status": "approved",
+            "plan": "# Test Plan",
+            "risk_tags": ["high_cholesterol"],
+            "iterations": 1,
+            "timestamp": "2025-11-23T10:00:00",
+            "health_analysis": {"cholesterol": 200},
+            "validation_result": {"decision": "APPROVE"}
+        }
+
+        with patch(
+            "src.api.server.OCRParser"
+        ) as MockParser, patch(
+            "src.api.server.Orchestrator"
+        ) as MockOrchestrator:
+            # Mock parser
+            mock_parser_instance = MockParser.return_value
+            mock_parser_instance.parse_batch = AsyncMock(return_value=mock_parse_result)
+
+            # Mock orchestrator
+            mock_orchestrator_instance = MockOrchestrator.return_value
+            mock_orchestrator_instance.execute = AsyncMock(
+                return_value=mock_orchestrator_result
+            )
+
+            # Upload single file
+            with open(test_file, "rb") as f:
+                response = client.post(
+                    "/api/v1/upload_report",
+                    files=[("files", ("report.pdf", f, "application/pdf"))],
+                    data={"age": 45, "gender": "male"},
+                )
+
+            assert response.status_code == 200
+            data = response.json()
+            assert "upload_stats" in data
+            assert data["upload_stats"]["total_files"] == 1
+            assert data["upload_stats"]["successfully_parsed"] == 1
+            assert data["session_id"] == "test-session-single"
+
+    def test_multi_file_upload_success(self, client, tmp_path):
+        """Test successful multi-file upload with 3 pages."""
+        # Create 3 dummy PDF files
+        files = []
+        for i in range(1, 4):
+            test_file = tmp_path / f"page{i}.pdf"
+            test_file.write_bytes(f"%PDF-1.4\npage {i} content".encode())
+            files.append(test_file)
+
+        # Mock parser response (merged data from 3 files)
+        mock_parse_result = {
+            "merged_data": {
+                "total_cholesterol": 240,
+                "ldl": 160,
+                "hdl": 35,
+                "blood_pressure_systolic": 140,
+                "blood_pressure_diastolic": 90,
+            },
+            "overall_completeness": 0.9,
+            "results": [
+                {"source": "ocr"},
+                {"source": "ocr"},
+                {"source": "hybrid"},
+            ],
+        }
+
+        mock_orchestrator_result = {
+            "session_id": "test-session-multi",
+            "status": "approved",
+            "plan": "# Comprehensive Test Plan",
+            "risk_tags": ["high_cholesterol", "elevated_blood_pressure"],
+            "iterations": 1,
+            "timestamp": "2025-11-23T10:00:00",
+            "health_analysis": {"cholesterol": 240},
+            "validation_result": {"decision": "APPROVE"}
+        }
+
+        with patch(
+            "src.api.server.OCRParser"
+        ) as MockParser, patch(
+            "src.api.server.Orchestrator"
+        ) as MockOrchestrator:
+            # Mock parser
+            mock_parser_instance = MockParser.return_value
+            mock_parser_instance.parse_batch = AsyncMock(return_value=mock_parse_result)
+
+            # Mock orchestrator
+            mock_orchestrator_instance = MockOrchestrator.return_value
+            mock_orchestrator_instance.execute = AsyncMock(
+                return_value=mock_orchestrator_result
+            )
+
+            # Upload 3 files
+            file_handles = [open(f, "rb") for f in files]
+            try:
+                response = client.post(
+                    "/api/v1/upload_report",
+                    files=[
+                        ("files", (f"page{i}.pdf", file_handles[i - 1], "application/pdf"))
+                        for i in range(1, 4)
+                    ],
+                    data={"age": 50, "gender": "female", "health_goal": "Lower cholesterol"},
+                )
+            finally:
+                for fh in file_handles:
+                    fh.close()
+
+            assert response.status_code == 200
+            data = response.json()
+
+            # Verify upload stats
+            assert "upload_stats" in data
+            assert data["upload_stats"]["total_files"] == 3
+            assert data["upload_stats"]["successfully_parsed"] == 3
+            assert data["upload_stats"]["failed_files"] == []
+            assert "parsing_time_seconds" in data["upload_stats"]
+
+            # Verify parsed data includes merged results
+            assert "parsed_data" in data
+            assert data["parsed_data"]["total_cholesterol"] == 240
+
+    def test_multi_file_exceeds_max_files(self, client, tmp_path):
+        """Test rejection when file count exceeds limit (10 files)."""
+        # Create 11 files (exceeds limit)
+        files = []
+        for i in range(11):
+            test_file = tmp_path / f"page{i}.pdf"
+            test_file.write_bytes(b"%PDF-1.4\n%content")
+            files.append(test_file)
+
+        file_handles = [open(f, "rb") for f in files]
+        try:
+            response = client.post(
+                "/api/v1/upload_report",
+                files=[
+                    ("files", (f"page{i}.pdf", file_handles[i], "application/pdf"))
+                    for i in range(11)
+                ],
+            )
+        finally:
+            for fh in file_handles:
+                fh.close()
+
+        assert response.status_code == 400
+        data = response.json()
+        assert "Too many files" in data["detail"]["detail"]
+
+    def test_multi_file_partial_success(self, client, tmp_path):
+        """Test partial success when some files fail validation."""
+        # Create 2 valid PDFs and 1 invalid file
+        valid1 = tmp_path / "page1.pdf"
+        valid2 = tmp_path / "page2.pdf"
+        invalid = tmp_path / "badfile.txt"
+
+        valid1.write_bytes(b"%PDF-1.4\n%content1")
+        valid2.write_bytes(b"%PDF-1.4\n%content2")
+        invalid.write_bytes(b"not a pdf file")
+
+        # Mock parser response (only 2 valid files parsed)
+        mock_parse_result = {
+            "merged_data": {"total_cholesterol": 200},
+            "overall_completeness": 0.8,
+            "results": [{"source": "ocr"}, {"source": "ocr"}],
+        }
+
+        mock_orchestrator_result = {
+            "session_id": "test-session-partial",
+            "status": "approved",
+            "plan": "# Partial Plan",
+            "risk_tags": [],
+            "iterations": 1,
+            "timestamp": "2025-11-23T10:00:00",
+            "health_analysis": {"cholesterol": 200},
+            "validation_result": {"decision": "APPROVE"}
+        }
+
+        with patch(
+            "src.api.server.OCRParser"
+        ) as MockParser, patch(
+            "src.api.server.Orchestrator"
+        ) as MockOrchestrator:
+            # Mock parser
+            mock_parser_instance = MockParser.return_value
+            mock_parser_instance.parse_batch = AsyncMock(return_value=mock_parse_result)
+            mock_parser_instance.validate_file.side_effect = [
+                {"valid": True, "error": None},
+                {"valid": True, "error": None},
+                {"valid": False, "error": "Invalid file type"},
+            ]
+
+            # Mock orchestrator
+            mock_orchestrator_instance = MockOrchestrator.return_value
+            mock_orchestrator_instance.execute = AsyncMock(
+                return_value=mock_orchestrator_result
+            )
+
+            # Upload 3 files
+            files = [
+                ("files", ("page1.pdf", open(valid1, "rb"), "application/pdf")),
+                ("files", ("page2.pdf", open(valid2, "rb"), "application/pdf")),
+                ("files", ("badfile.txt", open(invalid, "rb"), "text/plain")),
+            ]
+            
+            try:
+                response = client.post(
+                    "/api/v1/upload_report",
+                    files=files,
+                    data={"age": 40},
+                )
+            finally:
+                for _, (name, f, _) in files:
+                    f.close()
+
+            assert response.status_code == 200
+            data = response.json()
+
+            # Verify upload stats
+            assert "upload_stats" in data
+            assert data["upload_stats"]["total_files"] == 3
+            assert data["upload_stats"]["successfully_parsed"] == 2
+            assert "badfile.txt" in data["upload_stats"]["failed_files"]
+
 
 
 class TestMultiFileUploadEndpoint:

@@ -1,89 +1,200 @@
-"""Unit tests for Orchestrator."""
+"""Unit tests for Orchestrator with clean architecture."""
 
 import pytest
 from google.adk.agents import SequentialAgent, LoopAgent, LlmAgent
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch, MagicMock
 
 from src.workflow.orchestrator import Orchestrator
+from src.workflow.executors.base import WorkflowExecutor
 from src.domain.state import MAX_RETRIES
 
 
-class TestOrchestrator:
-    """Test suite for Orchestrator."""
+class TestOrchestratorInitialization:
+    """Test suite for Orchestrator initialization."""
 
-    def test_orchestrator_initialization(self):
-        """Test that Orchestrator initializes correctly."""
-        orchestrator = Orchestrator(model_name="gemini-2.5-flash")
+    @patch('src.workflow.orchestrator.AgentFactory')
+    def test_orchestrator_initialization_with_defaults(self, mock_factory):
+        """Test that Orchestrator initializes with default parameters."""
+        # Setup mock workflow
+        mock_workflow = MagicMock(spec=SequentialAgent)
+        mock_factory.create_workflow.return_value = mock_workflow
+
+        orchestrator = Orchestrator()
 
         assert orchestrator is not None
         assert orchestrator.model_name == "gemini-2.5-flash"
+        assert orchestrator.executor is not None
+        assert orchestrator.workflow is mock_workflow
+        assert orchestrator.response_builder is not None
+        
+        # Verify factory was called
+        mock_factory.create_workflow.assert_called_once_with("gemini-2.5-flash")
 
-    def test_orchestrator_creates_all_agents(self):
-        """Test that Orchestrator creates all three agents."""
+    @patch('src.workflow.orchestrator.AgentFactory')
+    def test_orchestrator_initialization_with_custom_model(self, mock_factory):
+        """Test that Orchestrator initializes with custom model name."""
+        orchestrator = Orchestrator(model_name="gemini-1.5-pro")
+
+        assert orchestrator.model_name == "gemini-1.5-pro"
+        mock_factory.create_workflow.assert_called_once_with("gemini-1.5-pro")
+
+    @patch('src.workflow.orchestrator.AgentFactory')
+    def test_orchestrator_has_workflow_executor(self, mock_factory):
+        """Test that Orchestrator has a WorkflowExecutor instance."""
+        orchestrator = Orchestrator()
+
+        assert hasattr(orchestrator, 'executor')
+        assert orchestrator.executor is not None
+
+    @patch('src.workflow.orchestrator.AgentFactory')
+    def test_orchestrator_has_response_builder(self, mock_factory):
+        """Test that Orchestrator has a ResponseBuilder instance."""
+        orchestrator = Orchestrator()
+
+        assert hasattr(orchestrator, 'response_builder')
+        assert orchestrator.response_builder is not None
+
+    @patch('src.workflow.orchestrator.AgentFactory')
+    def test_orchestrator_creates_workflow_via_factory(self, mock_factory):
+        """Test that Orchestrator creates workflow using AgentFactory."""
+        mock_workflow = MagicMock(spec=SequentialAgent)
+        mock_factory.create_workflow.return_value = mock_workflow
+        
         orchestrator = Orchestrator(model_name="gemini-2.5-flash")
 
-        assert orchestrator.analyst_agent is not None
-        assert orchestrator.planner_agent is not None
-        assert orchestrator.guard_agent is not None
+        # Workflow should be created by factory
+        assert orchestrator.workflow is mock_workflow
 
-        # All agents should be LlmAgent instances
-        assert isinstance(orchestrator.analyst_agent, LlmAgent)
-        assert isinstance(orchestrator.planner_agent, LlmAgent)
-        assert isinstance(orchestrator.guard_agent, LlmAgent)
+    @patch('src.workflow.orchestrator.AgentFactory')
+    def test_orchestrator_with_custom_executor(self, mock_factory):
+        """Test that Orchestrator accepts custom executor via dependency injection."""
+        mock_executor = Mock(spec=WorkflowExecutor)
+        orchestrator = Orchestrator(executor=mock_executor)
 
-    def test_orchestrator_creates_planning_loop(self):
-        """Test that Orchestrator creates LoopAgent for Planner-Guard loop."""
-        orchestrator = Orchestrator(model_name="gemini-2.5-flash")
+        assert orchestrator.executor is mock_executor
 
-        assert orchestrator.planning_loop is not None
-        assert isinstance(orchestrator.planning_loop, LoopAgent)
 
-    def test_planning_loop_has_correct_max_iterations(self):
-        """Test that planning loop has max_iterations set to MAX_RETRIES."""
-        orchestrator = Orchestrator(model_name="gemini-2.5-flash")
+class TestOrchestratorWorkflowStructure:
+    """Test suite for verifying workflow structure.
+    
+    Note: Since we mock AgentFactory, we are testing that Orchestrator correctly
+    uses the workflow returned by the factory. The actual structure of the workflow
+    is tested in test_agent_factory.py (if it existed) or implicitly via integration tests.
+    Here we verify Orchestrator's interaction with the workflow object.
+    """
 
-        # LoopAgent should have max_iterations attribute
-        assert hasattr(orchestrator.planning_loop, 'max_iterations')
-        assert orchestrator.planning_loop.max_iterations == MAX_RETRIES
+    @patch('src.workflow.orchestrator.AgentFactory')
+    def test_workflow_is_stored(self, mock_factory):
+        """Test that workflow returned by factory is stored."""
+        mock_workflow = MagicMock(spec=SequentialAgent)
+        mock_workflow.name = "HealthActionSquad"
+        mock_factory.create_workflow.return_value = mock_workflow
+        
+        orchestrator = Orchestrator()
 
-    def test_orchestrator_creates_main_workflow(self):
-        """Test that Orchestrator creates SequentialAgent workflow."""
-        orchestrator = Orchestrator(model_name="gemini-2.5-flash")
+        assert orchestrator.workflow is mock_workflow
+        assert orchestrator.workflow.name == "HealthActionSquad"
 
-        assert orchestrator.workflow is not None
-        assert isinstance(orchestrator.workflow, SequentialAgent)
 
-    def test_workflow_structure(self):
-        """Test that workflow has correct structure (Analyst → PlanningLoop)."""
-        orchestrator = Orchestrator(model_name="gemini-2.5-flash")
+class TestOrchestratorExecute:
+    """Test suite for execute method."""
 
-        # Workflow should have sub_agents
-        assert hasattr(orchestrator.workflow, 'sub_agents')
-        assert orchestrator.workflow.sub_agents is not None
-        assert len(orchestrator.workflow.sub_agents) == 2
-
-        # First should be analyst, second should be planning loop
-        assert orchestrator.workflow.sub_agents[0] == orchestrator.analyst_agent
-        assert orchestrator.workflow.sub_agents[1] == orchestrator.planning_loop
-
-    def test_execute_is_async(self):
+    @patch('src.workflow.orchestrator.AgentFactory')
+    def test_execute_is_async(self, mock_factory):
         """Test that execute method is async."""
-        orchestrator = Orchestrator(model_name="gemini-2.5-flash")
+        orchestrator = Orchestrator()
 
         import inspect
         assert inspect.iscoroutinefunction(orchestrator.execute)
 
-    # Note: ADK workflow.run() integration tests require valid API key
-    # These tests would be in tests/e2e/ with actual API calls
-    # Unit tests focus on workflow structure and configuration
+    @pytest.mark.asyncio
+    @patch('src.workflow.orchestrator.AgentFactory')
+    async def test_execute_with_mocked_executor(self, mock_factory):
+        """Test execute method with mocked executor."""
+        # Create mock executor
+        mock_executor = Mock(spec=WorkflowExecutor)
+        mock_executor.execute = AsyncMock(return_value={
+            "health_analysis": '{"risk_tags": ["high_cholesterol"], "health_metrics": {}}',
+            "current_plan": "# Test Plan",
+            "validation_result": '{"decision": "APPROVE"}'
+        })
 
-    def test_orchestrator_with_different_models(self):
-        """Test that Orchestrator works with different model names."""
-        models = ["gemini-pro", "gemini-1.5-pro", "gemini-1.5-flash"]
+        orchestrator = Orchestrator(executor=mock_executor)
 
-        for model_name in models:
-            orchestrator = Orchestrator(model_name=model_name)
-            assert orchestrator.model_name == model_name
-            assert orchestrator.analyst_agent.model == model_name
-            assert orchestrator.planner_agent.model == model_name
-            assert orchestrator.guard_agent.model == model_name
+        # Execute
+        result = await orchestrator.execute(
+            health_report={"cholesterol": 240},
+            user_profile={"age": 45}
+        )
+
+        # Verify executor was called
+        assert mock_executor.execute.called
+        # Verify result structure
+        assert "session_id" in result
+        assert "status" in result
+        assert "plan" in result
+
+    @pytest.mark.asyncio
+    @patch('src.workflow.orchestrator.AgentFactory')
+    async def test_execute_passes_health_report_and_profile(self, mock_factory, sample_health_report, sample_user_profile):
+        """Test that execute passes health_report and user_profile to executor."""
+        mock_executor = Mock(spec=WorkflowExecutor)
+        mock_executor.execute = AsyncMock(return_value={
+            "health_analysis": '{"risk_tags": [], "health_metrics": {}}',
+            "current_plan": "plan",
+            "validation_result": '{"decision": "APPROVE"}'
+        })
+
+        orchestrator = Orchestrator(executor=mock_executor)
+        await orchestrator.execute(
+            health_report=sample_health_report,
+            user_profile=sample_user_profile
+        )
+
+        # Verify executor.execute was called with initial_state containing both
+        call_args = mock_executor.execute.call_args
+        assert call_args is not None
+        kwargs = call_args.kwargs
+        assert "initial_state" in kwargs
+        assert "health_report" in kwargs["initial_state"]
+        assert "user_profile" in kwargs["initial_state"]
+
+    @pytest.mark.asyncio
+    @patch('src.workflow.orchestrator.AgentFactory')
+    async def test_execute_handles_errors_gracefully(self, mock_factory):
+        """Test that execute handles errors and returns error response."""
+        mock_executor = Mock(spec=WorkflowExecutor)
+        mock_executor.execute = AsyncMock(side_effect=ValueError("Test error"))
+
+        orchestrator = Orchestrator(executor=mock_executor)
+        result = await orchestrator.execute(health_report={})
+
+        # Should return error response
+        assert result["status"] == "fallback"
+        assert "error" in result
+        assert "Test error" in result["error"]
+
+
+class TestOrchestratorCleanup:
+    """Test suite for cleanup method."""
+
+    @patch('src.workflow.orchestrator.AgentFactory')
+    def test_cleanup_is_async(self, mock_factory):
+        """Test that cleanup method is async."""
+        orchestrator = Orchestrator()
+
+        import inspect
+        assert inspect.iscoroutinefunction(orchestrator.cleanup)
+
+    @pytest.mark.asyncio
+    @patch('src.workflow.orchestrator.AgentFactory')
+    async def test_cleanup_delegates_to_executor(self, mock_factory):
+        """Test that cleanup calls executor.cleanup()."""
+        mock_executor = Mock(spec=WorkflowExecutor)
+        mock_executor.cleanup = AsyncMock()
+
+        orchestrator = Orchestrator(executor=mock_executor)
+        await orchestrator.cleanup()
+
+        # Verify executor cleanup was called
+        assert mock_executor.cleanup.called

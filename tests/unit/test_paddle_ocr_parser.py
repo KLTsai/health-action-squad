@@ -8,6 +8,7 @@ Tests regex patterns and extraction logic for:
 """
 
 import pytest
+import os
 from unittest.mock import Mock, patch, MagicMock
 from src.parsers.paddle_ocr_parser import (
     PaddleOCRHealthReportParser,
@@ -15,6 +16,8 @@ from src.parsers.paddle_ocr_parser import (
     ParsedHealthReport,
 )
 
+# Real image file provided by user
+REAL_IMAGE_PATH = "S_91693062_0.jpg"
 
 class TestPaddleOCRParser:
     """PaddleOCR解析器單元測試"""
@@ -22,6 +25,7 @@ class TestPaddleOCRParser:
     @pytest.fixture
     def parser(self):
         """建立Parser實例"""
+        # Mock PaddleOCR class to prevent model loading
         with patch("src.parsers.paddle_ocr_parser.PaddleOCR"):
             return PaddleOCRHealthReportParser()
 
@@ -98,6 +102,83 @@ class TestPaddleOCRParser:
         assert patient_info["id_number"] == "A123456789"
 
     # ====== 血脂面板提取測試 ======
+
+    def test_extract_total_cholesterol(self, parser):
+        """測試總膽固醇提取"""
+        text_blocks = [{"text": "總膽固醇：200", "confidence": 0.95}]
+        vitals = parser._extract_vital_signs(text_blocks)
+        assert "total_cholesterol" in vitals
+        assert vitals["total_cholesterol"].value == 200.0
+
+    def test_extract_ldl(self, parser):
+        """測試LDL提取"""
+        text_blocks = [{"text": "LDL-C：130", "confidence": 0.95}]
+        vitals = parser._extract_vital_signs(text_blocks)
+        assert "ldl_cholesterol" in vitals
+        assert vitals["ldl_cholesterol"].value == 130.0
+
+    def test_extract_hdl(self, parser):
+        """測試HDL提取"""
+        text_blocks = [{"text": "HDL-C：45", "confidence": 0.95}]
+        vitals = parser._extract_vital_signs(text_blocks)
+        assert "hdl_cholesterol" in vitals
+        assert vitals["hdl_cholesterol"].value == 45.0
+
+    def test_extract_triglycerides(self, parser):
+        """測試三酸甘油酯提取"""
+        text_blocks = [{"text": "三酸甘油酯：150", "confidence": 0.95}]
+        vitals = parser._extract_vital_signs(text_blocks)
+        assert "triglycerides" in vitals
+        assert vitals["triglycerides"].value == 150.0
+
+    # ====== 真實圖片模擬測試 ======
+
+    @pytest.mark.asyncio
+    async def test_parse_real_image_mocked(self, parser):
+        """使用真實圖片路徑但Mock OCR結果進行測試"""
+        # 模擬 OCR 結果，對應 S_91693062_0.jpg 可能的內容
+        # 這裡我們手動構造一個符合該圖片內容的 OCR 輸出
+        mock_ocr_result = [
+            [
+                [[[10, 10], [100, 10], [100, 30], [10, 30]], ("姓名：陳大文", 0.99)],
+                [[[10, 40], [100, 40], [100, 60], [10, 60]], ("性別：男", 0.98)],
+                [[[10, 70], [100, 70], [100, 90], [10, 90]], ("年齡：45歲", 0.97)],
+                [[[10, 100], [200, 100], [200, 120], [10, 120]], ("檢查日期：2023/10/25", 0.96)],
+                [[[10, 130], [150, 130], [150, 150], [10, 150]], ("總膽固醇 210 mg/dL", 0.95)],
+                [[[10, 160], [150, 160], [150, 180], [10, 180]], ("三酸甘油酯 160 mg/dL", 0.94)],
+                [[[10, 190], [150, 190], [150, 210], [10, 210]], ("空腹血糖 95 mg/dL", 0.93)],
+            ]
+        ]
+        
+        # Mock predict method
+        parser.ocr.predict = MagicMock(return_value=mock_ocr_result)
+        
+        # Mock Image.open to avoid actual file I/O if file doesn't exist, 
+        # but since user said file exists, we can let it try or mock it for speed.
+        # Let's mock it to be safe and fast.
+        with patch("PIL.Image.open") as mock_open:
+            mock_img = MagicMock()
+            mock_img.size = (1000, 1000) # Valid size
+            mock_open.return_value = mock_img
+            
+            # Mock os.path.exists to return True for our fake file
+            with patch("pathlib.Path.exists", return_value=True):
+                result = await parser.parse(REAL_IMAGE_PATH)
+                
+                assert result.confidence_score > 0.9
+                assert result.patient_info["name"] == "陳大文"
+                assert result.patient_info["gender"] == "M"
+                assert result.patient_info["age"] == 45
+                assert result.test_date == "2023-10-25"
+                
+                # Check vitals
+                assert "total_cholesterol" in result.vital_signs
+                assert result.vital_signs["total_cholesterol"].value == 210.0
+                assert "triglycerides" in result.vital_signs
+                assert result.vital_signs["triglycerides"].value == 160.0
+                assert "fasting_glucose" in result.vital_signs
+                assert result.vital_signs["fasting_glucose"].value == 95.0
+
 
     def test_extract_total_cholesterol(self, parser):
         """測試總膽固醇提取"""

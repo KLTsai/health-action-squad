@@ -4,6 +4,15 @@ This module provides shared fixtures for all test modules.
 Fixtures include sample data, mock objects, and test utilities.
 """
 
+import sys
+from unittest.mock import MagicMock
+
+# GLOBAL MOCK: Prevent PaddleOCR from loading during ANY test
+# This is critical for test performance as PaddleOCR loads heavy models on import
+mock_paddle = MagicMock()
+sys.modules["paddleocr"] = mock_paddle
+sys.modules["paddleocr.PaddleOCR"] = mock_paddle
+
 import json
 import pytest
 from pathlib import Path
