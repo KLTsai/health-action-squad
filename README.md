@@ -33,6 +33,7 @@ It acts as a "pre-deployment" team that:
 
 **Goal**: To remove the fear of the unknown and empower you to take *safe, immediate action* while waiting for professional care.
 
+```mermaid
 graph TD
     User[User Health Report] --> Analyst[🕵️ Analyst Agent]
     Analyst -->|Risk Tags & Analysis| Planner[📋 Planner Agent]
