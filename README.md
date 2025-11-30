@@ -39,7 +39,7 @@ It acts as a "pre-deployment" team that:
 ### 📸 See It In Action
 
 <p align="center">
-  <img src="docs/images/ui_demo.png" alt="Health Action Squad UI Demo" width="80%" style="border-radius: 10px; box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2);">
+  <img src="docs/images/ui_demo.png" alt="Health Action Squad UI Demo" width="70%" style="border-radius: 10px; box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2);">
 </p>
 
 ---
