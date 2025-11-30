@@ -104,6 +104,8 @@ if "current_plan" not in st.session_state:
     st.session_state.current_plan = None
 if "risk_tags" not in st.session_state:
     st.session_state.risk_tags = []
+if "last_result" not in st.session_state:  # NEW: Store full result for regenerate optimization
+    st.session_state.last_result = None
 
 # --- Helper Functions ---
 def convert_markdown_to_pdf(markdown_content):
@@ -318,6 +320,7 @@ if uploaded_files:
                     st.session_state.parsed_data = final_result.get("parsed_data", {})
                     st.session_state.current_plan = final_result.get("plan", "")
                     st.session_state.risk_tags = final_result.get("risk_tags", [])
+                    st.session_state.last_result = final_result  # NEW: Store full result for regenerate
                     st.success("Analysis Complete!")
                     st.rerun() # Rerun to show results
                 elif error_message:
@@ -327,12 +330,28 @@ if uploaded_files:
             if st.session_state.parsed_data:
                 if st.button("🔄 Regenerate Plan"):
                     with st.spinner("🧠 Rethinking plan based on new profile..."):
-                        response = call_generate_api(st.session_state.parsed_data, profile_data)
+                        # Get the previous analysis result if available
+                        previous_result = st.session_state.get("last_result")
+                        health_analysis = previous_result.get("health_analysis") if previous_result else None
+                        
+                        # Build payload with health_analysis to skip Analyst Agent (performance optimization)
+                        payload = {
+                            "health_report": st.session_state.parsed_data,
+                            "user_profile": profile_data,
+                            "health_analysis": health_analysis  # NEW: Include to optimize regenerate
+                        }
+                        
+                        response = requests.post(
+                            f"{API_URL}/generate_plan",
+                            json=payload,
+                            timeout=60
+                        )
                         
                         if response and response.status_code == 200:
                             result = response.json()
                             st.session_state.current_plan = result.get("plan", "")
                             st.session_state.risk_tags = result.get("risk_tags", [])
+                            st.session_state.last_result = result  # Save for future regenerations
                             st.success("Plan Regenerated!")
                         elif response:
                             st.error(f"Error: {response.json().get('detail', 'Unknown error')}")

@@ -192,6 +192,7 @@ async def generate_plan(request: HealthReportRequest) -> PlanGenerationResponse:
         result = await orchestrator.execute(
             health_report=request.health_report,
             user_profile=request.user_profile,
+            health_analysis=request.health_analysis,
         )
 
         # Log successful completion

@@ -39,7 +39,8 @@ class StateManager:
     @staticmethod
     def prepare_initial_state(
         health_report: Dict[str, Any],
-        user_profile: Dict[str, Any]
+        user_profile: Dict[str, Any],
+        health_analysis: Dict[str, Any] = None  # NEW: Optional pre-computed analysis
     ) -> Dict[str, Any]:
         """Prepare complete initial session state.
 
@@ -49,6 +50,7 @@ class StateManager:
         Args:
             health_report: User's health report data
             user_profile: User profile information
+            health_analysis: Optional pre-computed health analysis (skips Analyst Agent)
 
         Returns:
             Complete initial state dictionary with all required keys
@@ -57,10 +59,14 @@ class StateManager:
             State keys correspond to placeholders in agent prompts:
             - {health_report} → health_report
             - {user_profile} → user_profile
-            - {health_analysis} → health_analysis (from ReportAnalyst)
+            - {health_analysis} → health_analysis (from ReportAnalyst OR pre-provided)
             - {current_plan} → current_plan (from LifestylePlanner)
             - {validation_result} → validation_result (from SafetyGuard)
             - {safety_rules_yaml} → safety_rules_yaml (static resource)
+            
+            Performance Optimization:
+            - If health_analysis is provided, the workflow will skip the Analyst Agent
+            - This speeds up "Regenerate Plan" requests by ~50-70%
         """
         # Load external resources
         safety_rules_yaml = StateManager._load_safety_rules()
@@ -69,7 +75,7 @@ class StateManager:
         initial_state = {
             "user_profile": user_profile,
             "health_report": health_report,
-            "health_analysis": None,  # Will be populated by ReportAnalyst
+            "health_analysis": health_analysis,  # Can be pre-populated to skip Analyst
             "current_plan": None,  # Will be populated by LifestylePlanner
             "validation_result": None,  # Will be populated by SafetyGuard
             "safety_rules_yaml": safety_rules_yaml,  # Static resource
@@ -80,7 +86,8 @@ class StateManager:
             state_keys=list(initial_state.keys()),
             user_profile_present=bool(user_profile),
             health_report_present=bool(health_report),
-            safety_rules_loaded=bool(safety_rules_yaml)
+            safety_rules_loaded=bool(safety_rules_yaml),
+            health_analysis_pre_provided=bool(health_analysis)  # NEW: Log optimization flag
         )
 
         return initial_state

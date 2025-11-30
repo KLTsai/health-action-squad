@@ -16,6 +16,7 @@ class HealthReportRequest(BaseModel):
     Attributes:
         health_report: Raw health report data (lab results, vitals, etc.)
         user_profile: Optional user profile data (age, gender, preferences, etc.)
+        health_analysis: Optional pre-computed health analysis (optimization for regenerate)
     """
 
     health_report: Dict = Field(
@@ -41,6 +42,15 @@ class HealthReportRequest(BaseModel):
             "weight_kg": 85,
             "activity_level": "sedentary",
             "dietary_preferences": ["no_red_meat"],
+        },
+    )
+
+    health_analysis: Optional[Dict] = Field(
+        default=None,
+        description="Optional pre-computed health analysis from previous request (skips Analyst Agent for faster regeneration)",
+        example={
+            "summary": "Multiple cardiovascular risk factors identified",
+            "risk_tags": ["high_cholesterol", "elevated_blood_pressure"],
         },
     )
 
