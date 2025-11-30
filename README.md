@@ -86,14 +86,21 @@ Health isn't one-size-fits-all. Our system is designed to respect regional nuanc
 ### 2. 🛡️ Safety-First Design (The "Guard" Rail)
 We know health is sensitive. Our **Guard Agent** strictly enforces:
 *   **No Prescriptions**: We never suggest medication dosages.
-*   **Mandatory Disclaimers**: Every plan emphasizes consulting a doctor.
-*   **Source Citation**: Recommendations are backed by guidelines (NCEP ATP III, ADA, etc.).
+*   **Mandatory Disclaimers**: Every plan includes a **prominent, non-negotiable medical disclaimer** with clear formatting.
+*   **Source Citation**: All recommendations are backed by credible sources (AHA, CDC, WHO, NIH) formatted as **clickable Markdown links**.
+*   **Automated Validation**: Plans are rejected if sources are missing or improperly formatted.
 
 ### 3. 🧘 Personalized Concierge
 Unlike a generic "eat healthy" search result, we tailor advice to *your* numbers:
 *   *High BP?* -> Focus on DASH diet and sodium reduction.
 *   *High Glucose?* -> Focus on carb counting and post-meal walks.
 *   *Sedentary?* -> Start with manageable 10-minute walks, not marathons.
+
+### 4. ⚡ Real-Time Progress Streaming
+We value transparency. Our system uses **Server-Sent Events (SSE)** to stream real-time progress updates:
+*   **Live Feedback**: Watch as the system validates files, runs OCR, and coordinates agents.
+*   **Step-by-Step Visibility**: See exactly which agent (Analyst, Planner, Guard) is working on your case.
+*   **No More Guessing**: Replaces generic loading spinners with meaningful status updates.
 
 ---
 
@@ -131,8 +138,9 @@ python main.py --input resources/data/sample_health_report.json
 
 **Start the API Server:**
 ```bash
-uvicorn src.api.server:app --reload
+uvicorn src.api.server:app --reload --port 8000
 # Open http://localhost:8000/docs to test the API
+# Streaming endpoints: /api/v1/generate_plan_stream, /api/v1/upload_report_stream
 ```
 
 ---
@@ -148,13 +156,13 @@ uvicorn src.api.server:app --reload
  
  **To run the UI locally:**
  
- 1.  **Start the System** (Windows):
+ 1.  **Start the System** (Windows - Quickest):
      ```bash
      run_app.bat
      ```
-     *This script automatically starts the API server and the Streamlit UI.*
+     *This script runs both the API server and Streamlit UI in the same terminal window (no popup windows).*
  
- 2.  **Manual Start**:
+ 2.  **Manual Start** (Alternative):
      ```bash
      # Activate Virtual Environment first!
      # Windows: venv\Scripts\activate
@@ -166,6 +174,8 @@ uvicorn src.api.server:app --reload
      # Terminal 2: Start UI
      streamlit run src/ui/app.py
      ```
+     
+     **Note**: To stop the application, press `Ctrl+C` in the terminal.
  
  3.  **Access**: Open [http://localhost:8501](http://localhost:8501) in your browser.
  

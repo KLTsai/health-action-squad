@@ -426,71 +426,6 @@ async def upload_report(
                 if not validation_result["valid"]:
                     failed_files.append(Path(temp_path).name)
                     logger.warning(
-                        "File validation failed",
-                        file=Path(temp_path).name,
-                        error=validation_result["error"],
-                    )
-
-            # If ALL files failed, return error
-            if len(failed_files) == len(files):
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=ErrorResponse(
-                        error="AllFilesInvalid",
-                        detail=f"All uploaded files failed validation: {', '.join(failed_files)}",
-                        timestamp=datetime.utcnow().isoformat(),
-                    ).model_dump(),
-                )
-
-            # Filter out failed files for parsing (partial success allowed)
-            valid_paths = [
-                p for p in temp_paths if Path(p).name not in failed_files
-            ]
-
-            logger.info(
-                "File validation completed",
-                total_files=len(files),
-                valid_files=len(valid_paths),
-                failed_files=len(failed_files),
-            )
-
-            # Step 4: Parse health reports using batch parser
-            start_time = time.time()
-
-            parser = OCRParser(
-                min_completeness_threshold=0.7,
-                use_llm_fallback=True,
-                preprocess_images=True,
-                session_id=None,
-            )
-
-            batch_result = await parser.parse_batch(
-                file_paths=valid_paths, merge_results=True
-            )
-
-            parsing_time = time.time() - start_time
-
-            # Extract merged data
-            extracted_metrics = batch_result.get("merged_data", {})
-            overall_completeness = batch_result.get("overall_completeness", 0.0)
-            individual_results = batch_result.get("results", [])
-
-            # Determine parsing source (aggregate across files)
-            sources = [r.get("source", "unknown") for r in individual_results]
-            parsing_source = "hybrid" if "hybrid" in sources else "ocr"
-
-            logger.info(
-                "Batch OCR parsing completed",
-                file_count=len(valid_paths),
-                completeness=overall_completeness,
-                source=parsing_source,
-                fields_extracted=len(extracted_metrics),
-                parsing_time=parsing_time,
-            )
-
-            # Prepare upload stats
-            upload_stats = MultiFileUploadStats(
-                total_files=len(files),
                 successfully_parsed=len(valid_paths),
                 failed_files=failed_files,
                 total_size_bytes=sum(file_sizes),
@@ -816,13 +751,91 @@ async def upload_report_stream(
                 yield f"event: result\ndata: {response.model_dump_json()}\n\n"
 
         except Exception as e:
-            logger.error("Streaming error", error=str(e), exc_info=True)
-            err_resp = ErrorResponse(
+            logger.error("Streaming upload error", error=str(e), exc_info=True)
+            error_response = ErrorResponse(
                 error="StreamingError",
                 detail=str(e),
-                timestamp=datetime.utcnow().isoformat(),
+                timestamp=datetime.utcnow().isoformat()
             )
-            yield f"event: error\ndata: {err_resp.model_dump_json()}\n\n"
+            yield f"event: error\ndata: {error_response.model_dump_json()}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+@app.post(
+    "/api/v1/generate_plan_stream",
+    tags=["Plan Generation"],
+    summary="Generate personalized health plan (Streaming)",
+    description="Same as generate_plan but returns a stream of progress events followed by the final result",
+)
+async def generate_plan_stream(request: HealthReportRequest) -> StreamingResponse:
+    """Generate personalized lifestyle plan with streaming progress.
+    
+    Events:
+    - event: progress, data: "Step description..."
+    - event: result, data: JSON string of PlanGenerationResponse
+    - event: error, data: JSON string of ErrorResponse
+    """
+    logger.info("Streaming plan generation requested")
+
+    async def event_generator():
+        try:
+            yield f"event: progress\ndata: Initializing AI agents...\n\n"
+            
+            orchestrator = Orchestrator(model_name=Config.MODEL_NAME)
+            
+            # Queue for progress messages
+            queue = asyncio.Queue()
+            
+            async def callback_wrapper(msg: str):
+                await queue.put(msg)
+            
+            # Run execution in background task
+            task = asyncio.create_task(orchestrator.execute(
+                health_report=request.health_report,
+                user_profile=request.user_profile,
+                progress_callback=callback_wrapper
+            ))
+            
+            # Consume queue while task is running
+            while not task.done():
+                try:
+                    msg = await asyncio.wait_for(queue.get(), timeout=0.1)
+                    yield f"event: progress\ndata: {msg}\n\n"
+                except asyncio.TimeoutError:
+                    continue
+            
+            # Process any remaining messages
+            while not queue.empty():
+                msg = await queue.get()
+                yield f"event: progress\ndata: {msg}\n\n"
+            
+            # Get result
+            result = await task
+            
+            # Prepare response
+            response = PlanGenerationResponse(
+                session_id=result["session_id"],
+                status=result["status"],
+                plan=result.get("plan", ""),
+                risk_tags=result.get("risk_tags", []),
+                iterations=result.get("iterations", 1),
+                timestamp=result.get("timestamp", datetime.utcnow().isoformat()),
+                health_analysis=result.get("health_analysis"),
+                validation_result=result.get("validation_result"),
+                message=result.get("message"),
+            )
+            
+            yield f"event: result\ndata: {response.model_dump_json()}\n\n"
+
+        except Exception as e:
+            logger.error("Streaming generation error", error=str(e), exc_info=True)
+            error_response = ErrorResponse(
+                error="StreamingError",
+                detail=str(e),
+                timestamp=datetime.utcnow().isoformat()
+            )
+            yield f"event: error\ndata: {error_response.model_dump_json()}\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
