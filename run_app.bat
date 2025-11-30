@@ -1,0 +1,16 @@
+@echo off
+echo Starting Health Action Squad...
+
+echo Activating Virtual Environment...
+call venv\Scripts\activate
+
+echo 1. Starting API Server...
+start cmd /k "call venv\Scripts\activate && uvicorn src.api.server:app --reload --port 8000"
+
+echo Waiting for API to initialize...
+timeout /t 5
+
+echo 2. Starting Streamlit UI...
+streamlit run src/ui/app.py
+
+pause

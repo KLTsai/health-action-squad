@@ -2,25 +2,28 @@
 google-adk>=0.1.0
 google-generativeai>=0.3.0
 
-# Web framework
+# Web framework - Backend (FastAPI)
 fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
-pydantic>=2.4.0
-slowapi>=0.1.9
+python-multipart>=0.0.6
 
-# Data processing
-pyyaml>=6.0.1
-python-dotenv>=1.0.0
+# Web framework - Frontend (Streamlit UI)
+streamlit>=1.28.0
 
-# PDF processing & OCR
-paddleocr>=2.7.0
+# PDF and Document Processing
+xhtml2pdf>=0.2.11
+markdown>=3.5.0
 pdf2image>=1.16.0
+poppler-utils; platform_system != "Windows"  # Required for pdf2image on Linux/Mac
+
+# OCR Engine
 paddlepaddle>=2.5.0
-Pillow>=10.0.0
+paddleocr>=2.7.0
 
 # Image preprocessing for mobile photos
 opencv-python>=4.8.0
 numpy>=1.24.0
+Pillow>=10.0.0
 
 # Testing
 pytest>=7.4.0
@@ -40,3 +43,6 @@ structlog>=23.2.0
 # Utilities
 requests>=2.31.0
 aiohttp>=3.9.0
+pydantic>=2.0.0
+python-dotenv>=1.0.0
+PyYAML>=6.0

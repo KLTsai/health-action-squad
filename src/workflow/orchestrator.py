@@ -10,7 +10,7 @@ Architecture:
 - Design Patterns: Facade, Strategy, Factory, Dependency Injection
 """
 
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 import uuid
 from datetime import datetime
 
@@ -87,7 +87,8 @@ class Orchestrator:
     async def execute(
         self,
         health_report: Dict,
-        user_profile: Optional[Dict] = None
+        user_profile: Optional[Dict] = None,
+        progress_callback: Any = None
     ) -> Dict:
         """Execute workflow and return response.
 
@@ -102,6 +103,7 @@ class Orchestrator:
         Args:
             health_report: User's health report data
             user_profile: Optional user profile information
+            progress_callback: Optional async callback for progress updates
 
         Returns:
             Formatted response dictionary (structure unchanged from before)
@@ -151,7 +153,8 @@ class Orchestrator:
                 workflow=self.workflow,
                 initial_state=initial_state,
                 session_id=session_id,
-                user_id=user_id
+                user_id=user_id,
+                progress_callback=progress_callback
             )
 
             logger.info(

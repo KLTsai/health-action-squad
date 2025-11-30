@@ -32,7 +32,8 @@ class WorkflowExecutor(ABC):
         workflow: Any,
         initial_state: Dict[str, Any],
         session_id: str,
-        user_id: str
+        user_id: str,
+        progress_callback: Any = None
     ) -> Dict[str, Any]:
         """Execute workflow and return final state.
 

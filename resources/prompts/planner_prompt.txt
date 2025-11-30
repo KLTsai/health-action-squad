@@ -62,6 +62,9 @@ Generate a comprehensive Markdown plan with the following sections:
 - **Language**: Clear, accessible language (avoid excessive medical jargon)
 - **Tone**: Supportive and encouraging, not prescriptive
 - **Citations**: Include credible sources for all medical claims
+- **Formatting**: 
+    - Use **bold text** to highlight key takeaways, important numbers, and critical warnings
+    - Use clickable Markdown links for sources: `[Source Name](URL)`
 - **Disclaimer**: MUST include medical disclaimer
 
 ## Required Disclaimer
@@ -71,7 +74,10 @@ Every plan MUST end with:
 ---
 **Medical Disclaimer**: This plan is for informational and educational purposes only. It is not a substitute for professional medical advice, diagnosis, or treatment. Always consult with a qualified healthcare provider before making significant changes to your diet, exercise routine, or lifestyle, especially if you have existing health conditions or take medications.
 
-**Sources**: [List credible sources cited in the plan]
+**Sources**:
+- [Source Name](URL)
+- [Source Name](URL)
+... (List all sources cited in the plan)
 ---
 
 ## Safety Guidelines

@@ -60,7 +60,8 @@ class RunnerBasedExecutor(WorkflowExecutor):
         workflow: Any,
         initial_state: Dict[str, Any],
         session_id: str,
-        user_id: str
+        user_id: str,
+        progress_callback: Any = None
     ) -> Dict[str, Any]:
         """Execute workflow via ADK Runner.
 
@@ -72,6 +73,7 @@ class RunnerBasedExecutor(WorkflowExecutor):
             initial_state: Pre-prepared initial state
             session_id: Session identifier
             user_id: User identifier
+            progress_callback: Optional async callback(str) for progress updates
 
         Returns:
             Final session state with all agent outputs
@@ -134,6 +136,16 @@ class RunnerBasedExecutor(WorkflowExecutor):
                     session_id=session_id,
                     event_number=event_count
                 )
+                
+                # Send progress update
+                if progress_callback:
+                    # Format a user-friendly message based on the event
+                    # We can refine this based on actual event structure
+                    msg = f"Step {event_count}: Processing..."
+                    if event.author:
+                        msg = f"{event.author} is working..."
+                    
+                    await progress_callback(msg)
 
         logger.info(
             "Runner execution completed",

@@ -3,7 +3,7 @@
 > **Kaggle Agents Intensive Capstone Project (Concierge Agents Track)**
 > *Your Personal Health Concierge: Turning Medical Anxiety into Actionable Clarity.*
 
-![Health Action Squad Banner](docs/images/banner.png)
+![Health Action Squad Banner](docs/images/health_report_anxiety_banner.png)
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Google ADK](https://img.shields.io/badge/Google-ADK-4285F4.svg)](https://google.github.io/adk-docs/)
@@ -33,19 +33,6 @@ It acts as a "pre-deployment" team that:
 
 **Goal**: To remove the fear of the unknown and empower you to take *safe, immediate action* while waiting for professional care.
 
----
-
-## 🤖 The Squad: Agentic Architecture
-
-We use a **Multi-Agent System** powered by the **Google AI Agents Development Kit (ADK)** to ensure every piece of advice is vetted, safe, and personalized.
-
-![Agent Squad](docs/images/agent_squad.png)
-
-### The Workflow
-
-Our system implements advanced agentic patterns to ensure reliability:
-
-```mermaid
 graph TD
     User[User Health Report] --> Analyst[🕵️ Analyst Agent]
     Analyst -->|Risk Tags & Analysis| Planner[📋 Planner Agent]
@@ -151,14 +138,44 @@ uvicorn src.api.server:app --reload
 ---
 
 ## 📹 Demo & Deployment
-
-> **[Watch the Demo Video (YouTube)](YOUR_YOUTUBE_LINK_HERE)**  
-> *See the Health Action Squad in action, turning a complex report into a simple plan.*
-
-> **[Try the Live App](YOUR_DEPLOYMENT_LINK_HERE)**  
-> *Hosted on Streamlit / HuggingFace Spaces*
-
-*(Note: These links are placeholders for the Capstone submission)*
+ 
+ > **[Watch the Demo Video (YouTube)](YOUR_YOUTUBE_LINK_HERE)**  
+ > *See the Health Action Squad in action, turning a complex report into a simple plan.*
+ 
+ ### 🖥️ Live UI (Streamlit)
+ 
+ We provide a modern, user-friendly interface powered by **Streamlit**.
+ 
+ **To run the UI locally:**
+ 
+ 1.  **Start the System** (Windows):
+     ```bash
+     run_app.bat
+     ```
+     *This script automatically starts the API server and the Streamlit UI.*
+ 
+ 2.  **Manual Start**:
+     ```bash
+     # Activate Virtual Environment first!
+     # Windows: venv\Scripts\activate
+     # Mac/Linux: source venv/bin/activate
+ 
+     # Terminal 1: Start API
+     uvicorn src.api.server:app --reload --port 8000
+ 
+     # Terminal 2: Start UI
+     streamlit run src/ui/app.py
+     ```
+ 
+ 3.  **Access**: Open [http://localhost:8501](http://localhost:8501) in your browser.
+ 
+ ### ☁️ Cloud Deployment
+ 
+ This project is ready for **Streamlit Cloud** or **HuggingFace Spaces**.
+ 1.  Fork this repo.
+ 2.  Connect to Streamlit Cloud.
+ 3.  Set `src/ui/app.py` as the entry point.
+ 4.  Add `GEMINI_API_KEY` to secrets.
 
 ---
 

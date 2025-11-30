@@ -8,13 +8,14 @@ import json
 import time
 import tempfile
 import sys
+import asyncio
 import uvicorn
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional, List, Any
 
 from fastapi import FastAPI, HTTPException, Request, status, File, UploadFile, Form
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 project_root = Path(__file__).parent.parent.parent
@@ -634,6 +635,196 @@ async def upload_report(
                 timestamp=datetime.utcnow().isoformat(),
             ).model_dump(),
         )
+
+
+# Streaming upload endpoint
+@app.post(
+    "/api/v1/upload_report_stream",
+    tags=["Report Upload"],
+    summary="Upload health report and generate plan (Streaming)",
+    description="Same as upload_report but returns a stream of progress events followed by the final result",
+)
+async def upload_report_stream(
+    files: List[UploadFile] = File(
+        ...,
+        description="Health report files (PDF, JPG, or PNG). Upload multiple pages of same report. Maximum 10 files, 50MB total.",
+    ),
+    age: Optional[int] = Form(None, description="User age in years", ge=0, le=150),
+    gender: Optional[str] = Form(
+        None,
+        description="User gender (male/female/other)",
+        regex="^(male|female|other)$",
+    ),
+    dietary_restrictions: Optional[str] = Form(
+        None, description="Dietary restrictions as JSON string or comma-separated list"
+    ),
+    health_goal: Optional[str] = Form(None, description="Primary health goal"),
+    exercise_barriers: Optional[str] = Form(
+        None, description="Exercise barriers as JSON string or comma-separated list"
+    ),
+) -> StreamingResponse:
+    """Upload health report files and generate personalized plan with streaming progress.
+
+    This endpoint mirrors upload_report but returns Server-Sent Events (SSE).
+    Events:
+    - event: progress, data: "Step description..."
+    - event: result, data: JSON string of ParsedReportResponse
+    - event: error, data: JSON string of ErrorResponse
+    """
+    logger.info(
+        "Streaming multi-file upload started",
+        file_count=len(files),
+        filenames=[f.filename for f in files],
+    )
+
+    async def event_generator():
+        try:
+            # --- Step 1-5: Validation & Parsing (Same as upload_report) ---
+            
+            yield f"event: progress\ndata: Validating files...\n\n"
+            await asyncio.sleep(0.1) # Yield control
+
+            # 1. Validate
+            validation = validate_multi_file_upload(files)
+            if not validation["valid"]:
+                raise ValueError(validation["error"])
+
+            # 2. Save temp files
+            yield f"event: progress\ndata: Saving uploaded files...\n\n"
+            with tempfile.TemporaryDirectory() as temp_dir:
+                temp_paths = []
+                file_sizes = []
+                for idx, file in enumerate(files):
+                    temp_path = Path(temp_dir) / f"{idx}_{file.filename or f'report_{idx}'}"
+                    file_content = await file.read()
+                    with temp_path.open("wb") as f:
+                        f.write(file_content)
+                    temp_paths.append(str(temp_path))
+                    file_sizes.append(len(file_content))
+
+                # 3. Validate individual files
+                yield f"event: progress\ndata: Checking file formats...\n\n"
+                failed_files = []
+                for temp_path in temp_paths:
+                    val_res = LegacyParser.validate_file(Path(temp_path))
+                    if not val_res["valid"]:
+                        failed_files.append(Path(temp_path).name)
+                
+                if len(failed_files) == len(files):
+                    raise ValueError(f"All files invalid: {', '.join(failed_files)}")
+
+                valid_paths = [p for p in temp_paths if Path(p).name not in failed_files]
+
+                # 4. Parse (OCR)
+                yield f"event: progress\ndata: Reading health reports (OCR)...\n\n"
+                start_time = time.time()
+                parser = OCRParser(
+                    min_completeness_threshold=0.7,
+                    use_llm_fallback=True,
+                    preprocess_images=True,
+                    session_id=None,
+                )
+                batch_result = await parser.parse_batch(
+                    file_paths=valid_paths, merge_results=True
+                )
+                parsing_time = time.time() - start_time
+                extracted_metrics = batch_result.get("merged_data", {})
+                
+                yield f"event: progress\ndata: Extracted {len(extracted_metrics)} health metrics.\n\n"
+
+                # 5. Prepare User Profile
+                user_profile = {}
+                if age is not None: user_profile["age"] = age
+                if gender is not None: user_profile["gender"] = gender
+                if health_goal is not None: user_profile["health_goal"] = health_goal
+                
+                # Helper for list parsing
+                def parse_list(val):
+                    if not val: return []
+                    try: return json.loads(val)
+                    except: return [s.strip() for s in val.split(",")]
+
+                if dietary_restrictions:
+                    user_profile["dietary_restrictions"] = parse_list(dietary_restrictions)
+                if exercise_barriers:
+                    user_profile["exercise_barriers"] = parse_list(exercise_barriers)
+
+                # Merge
+                merged_health_report = LegacyParser.merge_parsed_with_user_input(
+                    extracted_metrics, user_profile if user_profile else None
+                )
+
+                # --- Step 6: Execute Workflow with Progress ---
+                yield f"event: progress\ndata: Initializing AI agents...\n\n"
+                
+                orchestrator = Orchestrator(model_name=Config.MODEL_NAME)
+                
+                # Queue for progress messages
+                queue = asyncio.Queue()
+                
+                async def callback_wrapper(msg: str):
+                    await queue.put(msg)
+                
+                # Run execution in background task
+                task = asyncio.create_task(orchestrator.execute(
+                    health_report=merged_health_report,
+                    user_profile=user_profile if user_profile else None,
+                    progress_callback=callback_wrapper
+                ))
+                
+                # Consume queue while task is running
+                while not task.done():
+                    try:
+                        # Wait for message or task completion
+                        # We use a small timeout to check task status frequently
+                        msg = await asyncio.wait_for(queue.get(), timeout=0.1)
+                        yield f"event: progress\ndata: {msg}\n\n"
+                    except asyncio.TimeoutError:
+                        continue
+                
+                # Process any remaining messages
+                while not queue.empty():
+                    msg = await queue.get()
+                    yield f"event: progress\ndata: {msg}\n\n"
+                
+                # Get result
+                result = await task
+                
+                # Prepare response
+                upload_stats = MultiFileUploadStats(
+                    total_files=len(files),
+                    successfully_parsed=len(valid_paths),
+                    failed_files=failed_files,
+                    total_size_bytes=sum(file_sizes),
+                    parsing_time_seconds=round(parsing_time, 2),
+                )
+                
+                response = ParsedReportResponse(
+                    session_id=result["session_id"],
+                    status=result["status"],
+                    plan=result.get("plan", ""),
+                    parsed_data=extracted_metrics,
+                    risk_tags=result.get("risk_tags", []),
+                    iterations=result.get("iterations", 1),
+                    timestamp=result.get("timestamp", datetime.utcnow().isoformat()),
+                    health_analysis=result.get("health_analysis"),
+                    validation_result=result.get("validation_result"),
+                    message=result.get("message"),
+                    upload_stats=upload_stats,
+                )
+                
+                yield f"event: result\ndata: {response.model_dump_json()}\n\n"
+
+        except Exception as e:
+            logger.error("Streaming error", error=str(e), exc_info=True)
+            err_resp = ErrorResponse(
+                error="StreamingError",
+                detail=str(e),
+                timestamp=datetime.utcnow().isoformat(),
+            )
+            yield f"event: error\ndata: {err_resp.model_dump_json()}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 # Root endpoint
