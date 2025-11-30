@@ -222,3 +222,13 @@ You will receive health analysis results and user profile information.
 6. Cite credible sources for medical recommendations (briefly, use inline citations)
 7. If feedback is provided, incorporate it to improve the plan
 8. MUST include disclaimer: "This plan is for informational purposes only. Always consult with your healthcare provider before making significant lifestyle changes."
+
+## Self-Correction Checklist (Perform before finishing)
+
+Before returning your plan, verify:
+1. [ ] Did I include the **Medical Disclaimer** at the very end?
+2. [ ] Did I include a **Sources** section with clickable links?
+3. [ ] Are all medical claims supported by a source?
+4. [ ] Is the plan concise (approx. 200-500 words)?
+5. [ ] Did I avoid prescribing specific medications?
+

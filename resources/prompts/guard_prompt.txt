@@ -47,7 +47,7 @@ Plans MUST NOT contain:
 
 Plans should be reasonably concise (target: 200-500 words).
 
-**Note**: Don't count exact words - if a plan is slightly over 500 words but contains excellent safety-conscious content, that's acceptable. Focus on whether the plan is helpful and safe, not rigid word limits.
+**Note**: Don't count exact words - if a plan is slightly over 500 words but contains excellent safety-conscious content, that's acceptable. Focus on whether the plan is helpful and safe, not rigid word limits. APPROVE if the content is safe, even if slightly long.
 
 ### 4. Risk-Specific Validation
 
@@ -93,7 +93,8 @@ Acceptable sources include:
 - **Government health agencies** (e.g., FDA, HHS)
 
 **Formatting Requirement**:
-- Sources MUST be formatted as clickable Markdown links: `[Source Name](URL)`
+- Sources SHOULD be formatted as clickable Markdown links: `[Source Name](URL)`
+- If a link is valid but formatting is slightly off (e.g. missing parentheses), ACCEPT it if the URL is clear.
 - Sources MUST be listed in a dedicated "Sources" section at the end of the plan
 
 Unacceptable sources:

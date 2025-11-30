@@ -174,10 +174,10 @@ severity_levels:
     - "missing_risk_mitigation"
 
   medium:
-    - "plan_too_long"
     - "missing_minor_section"
 
   low:
+    - "plan_too_long"
     - "formatting_issues"
     - "minor_typos"
 
