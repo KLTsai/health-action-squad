@@ -5,6 +5,7 @@ import markdown
 from xhtml2pdf import pisa
 from io import BytesIO
 import time
+from datetime import datetime
 
 # --- Configuration ---
 API_URL = "http://localhost:8000/api/v1"
@@ -379,10 +380,14 @@ if st.session_state.current_plan:
     pdf_bytes = convert_markdown_to_pdf(st.session_state.current_plan)
     
     if pdf_bytes:
+        # Generate filename with timestamp: LifeStylePlan_YYYY-MM-DD_HH:MM:SS.pdf
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        filename = f"LifeStylePlan_{timestamp}.pdf"
+        
         st.download_button(
             label="📄 Download Plan as PDF",
             data=pdf_bytes,
-            file_name="health_action_plan.pdf",
+            file_name=filename,
             mime="application/pdf",
         )
     else:
