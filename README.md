@@ -193,10 +193,15 @@ uvicorn src.api.server:app --reload --port 8000
 
 ## 📹 Demo & Deployment
  
- > **[Watch the Demo Video (YouTube)](YOUR_YOUTUBE_LINK_HERE)**  
  > *See the Health Action Squad in action, turning a complex report into a simple plan.*
  
- ### 🖥️ Live UI (Streamlit)
+ ### � Application Screenshots
+ 
+ We provide real demo screenshots showing the Health Action Squad application in action:
+
+ > 💡 **Tip**: You can use these images (`docs/images/demo/ap_1.jpg` and `docs/images/demo/ap_2.jpg`) to see how the application processes health reports and generates personalized action plans.
+ 
+ ### �🖥️ Live UI (Streamlit)
  
  We provide a modern, user-friendly interface powered by **Streamlit**.
  
@@ -257,24 +262,26 @@ health-action-squad/
 ├── src/
 │   ├── agents/          # The Squad (Analyst, Planner, Guard)
 │   ├── workflow/        # ADK Orchestration (Runner, Factory)
-│   └── api/             # FastAPI Server
+│   ├── api/             # FastAPI Server with SSE Streaming
+│   ├── ui/              # Streamlit User Interface
+│   ├── parsers/         # Health Report Parsers (JSON, OCR)
+│   ├── ai/              # AI Client & Configuration
+│   ├── domain/          # Domain Models & Types
+│   ├── common/          # Shared Constants & Configs
+│   └── utils/           # Utility Functions
 ├── resources/
 │   ├── policies/        # Safety Rules & Medical Guidelines (YAML)
+│   ├── prompts/         # Agent System Prompts
 │   └── data/            # Sample Health Reports
 ├── tests/               # Comprehensive Test Suite
-└── docs/                # Images and Documentation
+├── docs/
+│   ├── images/          # UI Screenshots & Banners
+│   │   └── demo/        # Application Demo Screenshots
+│   └── *.md             # Technical Documentation
+├── main.py              # CLI Entry Point
+├── run_app.bat          # Windows Quick Start Script
+└── requirements.txt     # Python Dependencies
 ```
-
----
-
-## 🤝 Contributing
-
-We welcome contributions! Please see [CLAUDE.md](CLAUDE.md) for our coding standards.
-
-## 👤 Author
-
-**Kaggle Agents Intensive Capstone Project**
-*Concierge Agents Track*
 
 ---
 *Disclaimer: This tool is for informational purposes only and does not constitute medical advice. Always consult a professional healthcare provider.*
