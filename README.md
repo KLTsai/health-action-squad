@@ -195,13 +195,13 @@ uvicorn src.api.server:app --reload --port 8000
  
  > *See the Health Action Squad in action, turning a complex report into a simple plan.*
  
- ### � Application Screenshots
+ ### 📷 Application Screenshots
  
  We provide real demo screenshots showing the Health Action Squad application in action:
 
  > 💡 **Tip**: You can use these images (`docs/images/demo/ap_1.jpg` and `docs/images/demo/ap_2.jpg`) to see how the application processes health reports and generates personalized action plans.
  
- ### �🖥️ Live UI (Streamlit)
+ ### 🖥️ Live UI (Streamlit)
  
  We provide a modern, user-friendly interface powered by **Streamlit**.
  
