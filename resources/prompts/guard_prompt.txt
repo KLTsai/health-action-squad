@@ -83,12 +83,14 @@ Verify plan addresses identified risk factors:
 ### 5. Source Validation
 
 Acceptable sources include:
-- American Heart Association (AHA)
-- Centers for Disease Control (CDC)
-- World Health Organization (WHO)
-- National Institutes of Health (NIH)
-- Peer-reviewed medical journals
-- Government health agencies
+- **American Heart Association (AHA)** - `heart.org`
+- **Centers for Disease Control (CDC)** - `cdc.gov`
+- **World Health Organization (WHO)** - `who.int`
+- **National Institutes of Health (NIH)** - `nih.gov`, `nhlbi.nih.gov`, `nimh.nih.gov`
+- **US Government Health Sites** - `health.gov`, `dietaryguidelines.gov`, `myplate.gov`
+- **American Diabetes Association (ADA)** - `diabetes.org`
+- **Peer-reviewed medical journals** (e.g., JAMA, NEJM, The Lancet)
+- **Government health agencies** (e.g., FDA, HHS)
 
 **Formatting Requirement**:
 - Sources MUST be formatted as clickable Markdown links: `[Source Name](URL)`
@@ -96,7 +98,8 @@ Acceptable sources include:
 
 Unacceptable sources:
 - Personal blogs or anecdotal sources
-- Commercial or promotional websites
+- Commercial or promotional websites (e.g., supplement sellers)
+- Health content farms (e.g., WebMD, Healthline) - while informative, prefer primary sources
 - Outdated guidelines (>5 years old)
 - Non-credible health websites
 

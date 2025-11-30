@@ -70,17 +70,59 @@ Generate a comprehensive Markdown plan with the following sections:
 
 ## Verified Sources
 
-Use these exact URLs for common topics to ensure links work:
+Use these exact URLs for common topics to ensure links work. These URLs have been tested and verified as of November 2024.
 
-- **DASH Diet / Heart Health**:
-  - `https://www.heart.org/en/health-topics/high-blood-pressure/changes-you-can-make-to-manage-high-blood-pressure/managing-blood-pressure-with-a-heart-healthy-diet`
-- **Sleep**:
-  - `https://www.cdc.gov/sleep/about-sleep.html`
-- **Healthy Eating / Weight**:
-  - `https://www.cdc.gov/healthyweight/healthy_eating/index.html`
-- **Physical Activity**:
+### Cardiovascular Health
+- **High Blood Pressure**: 
+  - `https://www.heart.org/en/health-topics/high-blood-pressure`
+  - `https://www.cdc.gov/high-blood-pressure/index.html`
+- **DASH Diet**: 
+  - `https://www.nhlbi.nih.gov/education/dash-eating-plan`
+  - `https://www.heart.org/en/healthy-living/healthy-eating/eat-smart/nutrition-basics/dash-eating-plan`
+- **Cholesterol Management**: 
+  - `https://www.cdc.gov/cholesterol/about/index.html`
+  - `https://www.heart.org/en/health-topics/cholesterol`
+
+### Metabolic Health & Diabetes
+- **Diabetes Basics**: 
+  - `https://www.cdc.gov/diabetes/about/index.html`
+  - `https://www.who.int/health-topics/diabetes`
+- **Blood Sugar Management**: 
+  - `https://www.cdc.gov/diabetes/living-with/index.html`
+- **Prediabetes & Prevention**: 
+  - `https://www.cdc.gov/diabetes/prevention-type-2/index.html`
+
+### Nutrition & Weight Management
+- **Healthy Weight**: 
+  - `https://www.cdc.gov/healthyweight/index.html`
+  - `https://www.nhlbi.nih.gov/health/educational/lose_wt/index.htm`
+- **Dietary Guidelines**: 
+  - `https://www.dietaryguidelines.gov/`
+  - `https://www.myplate.gov/`
+- **Heart-Healthy Nutrition**: 
+  - `https://www.heart.org/en/healthy-living/healthy-eating`
+
+### Physical Activity & Exercise  
+- **Physical Activity Guidelines**: 
   - `https://www.who.int/news-room/fact-sheets/detail/physical-activity`
-- **Disclaimer**: MUST include medical disclaimer
+  - `https://health.gov/our-work/nutrition-physical-activity/physical-activity-guidelines`
+- **Exercise Basics**: 
+  - `https://www.cdc.gov/physical-activity-basics/index.html`
+
+### Sleep & Mental Health
+- **Sleep Health**: 
+  - `https://www.cdc.gov/sleep/index.html`
+  - `https://www.nhlbi.nih.gov/health/sleep`
+- **Mental Health & Stress**: 
+  - `https://www.who.int/health-topics/mental-health`
+  - `https://www.nimh.nih.gov/health/topics/caring-for-your-mental-health`
+
+### Preventive Care
+- **General Prevention**: 
+  - `https://www.cdc.gov/prevention/index.html`
+  - `https://www.who.int/health-topics/primary-health-care`
+
+**Note**: Always prefer these verified sources when citing medical recommendations. If you need a source not listed here, use your search capability to find the most recent guidelines from CDC, WHO, AHA, or NIH.
 
 ## Required Disclaimer
 
