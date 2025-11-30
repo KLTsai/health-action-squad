@@ -236,7 +236,7 @@ def call_generate_api(parsed_data, profile_data):
 
 # --- Sidebar: User Profile ---
 with st.sidebar:
-    st.image("docs/images/health_report_anxiety_banner.png", use_container_width=True)
+    st.image("docs/images/health_report_anxiety_banner.png", width='stretch')
     st.title("👤 User Profile")
     st.markdown("---")
     

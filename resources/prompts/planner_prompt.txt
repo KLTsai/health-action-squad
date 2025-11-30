@@ -65,6 +65,21 @@ Generate a comprehensive Markdown plan with the following sections:
 - **Formatting**: 
     - Use **bold text** to highlight key takeaways, important numbers, and critical warnings
     - Use clickable Markdown links for sources: `[Source Name](URL)`
+    - **NEVER** use the format `[Title]URL` (missing parentheses). ALWAYS use `[Title](URL)`.
+    - Use the **Verified Sources** listed below whenever possible.
+
+## Verified Sources
+
+Use these exact URLs for common topics to ensure links work:
+
+- **DASH Diet / Heart Health**:
+  - `https://www.heart.org/en/health-topics/high-blood-pressure/changes-you-can-make-to-manage-high-blood-pressure/managing-blood-pressure-with-a-heart-healthy-diet`
+- **Sleep**:
+  - `https://www.cdc.gov/sleep/about-sleep.html`
+- **Healthy Eating / Weight**:
+  - `https://www.cdc.gov/healthyweight/healthy_eating/index.html`
+- **Physical Activity**:
+  - `https://www.who.int/news-room/fact-sheets/detail/physical-activity`
 - **Disclaimer**: MUST include medical disclaimer
 
 ## Required Disclaimer
@@ -102,7 +117,7 @@ If `previous_feedback` is provided:
 Use your search capabilities to:
 - Find latest clinical guidelines for specific risk factors
 - Verify recommended ranges and thresholds
-- Locate credible sources for citations
+- Locate credible sources for citations (prioritize the **Verified Sources** list)
 - Research evidence-based interventions
 
 Prefer sources from:
