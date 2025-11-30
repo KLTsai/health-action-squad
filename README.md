@@ -36,17 +36,59 @@ It acts as a "pre-deployment" team that:
 
 **Goal**: To remove the fear of the unknown and empower you to take *safe, immediate action* while waiting for professional care.
 
+### 📸 See It In Action
+
+<p align="center">
+  <img src="docs/images/ui_demo.png" alt="Health Action Squad UI Demo" width="80%" style="border-radius: 10px; box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2);">
+</p>
+
+---
+
+## 🤖 Why Agents? (vs. Traditional Script)
+
+Why didn't we just write a simple `if/else` script? Because health data is messy and human anxiety is complex.
+
+| Feature | ❌ Traditional Script | ✅ Health Action Squad (Agents) |
+| :--- | :--- | :--- |
+| **Input Handling** | Breaks on unexpected formats or typos. | **Analyst Agent** intelligently parses messy OCR text & JSON. |
+| **Reasoning** | Rigid rules (e.g., `if BP > 140 then print X`). | **Planner Agent** considers context (Age, Location, Diet) for nuanced advice. |
+| **Safety** | Hard-coded warnings that users ignore. | **Guard Agent** actively critiques plans & forces retries if unsafe. |
+| **Adaptability** | Static output. | **Looping Architecture** refines the plan until it meets strict quality standards. |
+
+---
+
+## 🏗️ Architecture
+
+We use a **Sequential Multi-Agent Workflow** with a **Self-Correction Loop**.
+
 ```mermaid
 graph TD
-    User[User Health Report] --> Analyst[🕵️ Analyst Agent]
-    Analyst -->|Risk Tags & Analysis| Planner[📋 Planner Agent]
+    %% Nodes
+    User([👤 User Health Report])
+    Analyst[🕵️ Analyst Agent<br/><i>(Gemini 2.5 Flash)</i>]
+    Planner[📋 Planner Agent<br/><i>(Gemini 2.5 Flash)</i>]
+    Guard[🛡️ Guard Agent<br/><i>(Gemini 2.5 Flash)</i>]
+    Final([✅ Final Action Plan])
+
+    %% Data Flow
+    User -->|Raw Text/JSON| Analyst
+    Analyst -->|Structured Risk Tags| Planner
     
-    subgraph "Planning Loop(Max 3 Iterations)"
-        Planner -->|Draft Plan| Guard[🛡️ Guard Agent]
-        Guard -->|Review against Safety Rules| Decision{Approved?}
+    subgraph "Planning & Validation Loop (Max 3 Iterations)"
+        direction TB
+        Planner -->|Draft Plan| Guard
+        Guard -->|Critique & Safety Check| Decision{Approved?}
+        
         Decision -- No (Feedback) --> Planner
-        Decision -- Yes --> Final[✅ Final Action Plan]
+        Decision -- Yes --> Final
     end
+
+    %% Styling
+    style User fill:#f9f,stroke:#333,stroke-width:2px
+    style Final fill:#9f9,stroke:#333,stroke-width:2px
+    style Analyst fill:#bbf,stroke:#333,stroke-width:1px
+    style Planner fill:#bbf,stroke:#333,stroke-width:1px
+    style Guard fill:#fbb,stroke:#333,stroke-width:1px
 ```
 
 ### 🧠 Core Agent Concepts Applied
@@ -59,7 +101,7 @@ We demonstrate mastery of **6+ key agentic concepts**:
 
 2.  **Looping & Self-Correction**:
     *   **Concept**: Agents that can "think again" based on feedback.
-    *   **Implementation**: The `Planner` refines its plan up to 3 times if the `Guard` rejects it.
+    *   **Implementation**: The `Planner` refines its plan up to 3 times if the `Guard` rejects it (e.g., missing a disclaimer).
 
 3.  **Tool Use**:
     *   **Concept**: Agents using functions to control flow or access data.
