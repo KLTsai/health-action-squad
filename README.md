@@ -65,9 +65,9 @@ We use a **Sequential Multi-Agent Workflow** with a **Self-Correction Loop**.
 graph TD
     %% Nodes
     User([👤 User Health Report])
-    Analyst[🕵️ Analyst Agent<br/><i>(Gemini 2.5 Flash)</i>]
-    Planner[📋 Planner Agent<br/><i>(Gemini 2.5 Flash)</i>]
-    Guard[🛡️ Guard Agent<br/><i>(Gemini 2.5 Flash)</i>]
+    Analyst["🕵️ Analyst Agent<br/><i>(Gemini 2.5 Flash)</i>"]
+    Planner["📋 Planner Agent<br/><i>(Gemini 2.5 Flash)</i>"]
+    Guard["🛡️ Guard Agent<br/><i>(Gemini 2.5 Flash)</i>"]
     Final([✅ Final Action Plan])
 
     %% Data Flow
