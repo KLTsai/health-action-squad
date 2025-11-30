@@ -3,7 +3,10 @@
 > **Kaggle Agents Intensive Capstone Project (Concierge Agents Track)**
 > *Your Personal Health Concierge: Turning Medical Anxiety into Actionable Clarity.*
 
-![Health Action Squad Banner](docs/images/health_report_anxiety_banner.png)
+<p align="center">
+  <img src="docs/images/health_report_anxiety_banner.png" alt="Health Action Squad Banner" width="50%">
+</p>
+
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Google ADK](https://img.shields.io/badge/Google-ADK-4285F4.svg)](https://google.github.io/adk-docs/)
@@ -38,7 +41,7 @@ graph TD
     User[User Health Report] --> Analyst[🕵️ Analyst Agent]
     Analyst -->|Risk Tags & Analysis| Planner[📋 Planner Agent]
     
-    subgraph "Planning Loop (Max 3 Iterations)"
+    subgraph "Planning Loop(Max 3 Iterations)"
         Planner -->|Draft Plan| Guard[🛡️ Guard Agent]
         Guard -->|Review against Safety Rules| Decision{Approved?}
         Decision -- No (Feedback) --> Planner
