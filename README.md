@@ -259,6 +259,14 @@ pytest tests/
 
 ```
 health-action-squad/
+├── docs/
+│   ├── images/          # UI Screenshots & Banners
+│   │   └── demo/        # Application Demo Screenshots
+│   └── *.md             # Technical Documentation
+├── resources/
+│   ├── policies/        # Safety Rules & Medical Guidelines (YAML)
+│   ├── prompts/         # Agent System Prompts
+│   └── data/            # Sample Health Reports
 ├── src/
 │   ├── agents/          # The Squad (Analyst, Planner, Guard)
 │   ├── workflow/        # ADK Orchestration (Runner, Factory)
@@ -269,15 +277,7 @@ health-action-squad/
 │   ├── domain/          # Domain Models & Types
 │   ├── common/          # Shared Constants & Configs
 │   └── utils/           # Utility Functions
-├── resources/
-│   ├── policies/        # Safety Rules & Medical Guidelines (YAML)
-│   ├── prompts/         # Agent System Prompts
-│   └── data/            # Sample Health Reports
 ├── tests/               # Comprehensive Test Suite
-├── docs/
-│   ├── images/          # UI Screenshots & Banners
-│   │   └── demo/        # Application Demo Screenshots
-│   └── *.md             # Technical Documentation
 ├── main.py              # CLI Entry Point
 ├── run_app.bat          # Windows Quick Start Script
 └── requirements.txt     # Python Dependencies
