@@ -110,3 +110,8 @@ dmypy.json
 
 # Images
 *.jpg
+
+# CLAUDE specific
+CLAUDE.md
+CLAUDE_*.md
+Claude_*.md
