@@ -108,9 +108,6 @@ dmypy.json
 # ADK specific
 .adk_cache/
 
-# Images
-*.jpg
-
 # CLAUDE specific
 CLAUDE.md
 CLAUDE_*.md
